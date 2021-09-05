@@ -1,0 +1,29 @@
+---
+# - name: Print all available facts
+#   ansible.builtin.debug:
+#     var: ansible_facts
+
+- name: Setup Ansible facts
+  block:
+    - name: Ansible var dir
+      become: yes
+      become_user: root
+      file:
+        path: /var/ansible
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: 0775
+
+    - name: Ansible var/tmp dir
+      file:
+        path: /var/ansible/tmp
+        state: directory
+        mode: 0775
+
+    - name: Copy facts
+      become: yes
+      become_user: root
+      ansible.posix.synchronize:
+        src: ../resources/facts.d
+        dest: /etc/ansible/

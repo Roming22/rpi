@@ -1,0 +1,14 @@
+#!/bin/bash
+NAME="$(hostname -s)-${USER}"
+DEPLOY_SYS_UPGRADE="$(kubectl --kubeconfig="${HOME}/.kube/config" get deployment system-upgrade-controller -n system-upgrade -o yaml 2>/dev/null | grep " image:" | sed -e "s/.*v//")"
+EXISTS="$(k3d cluster list "${NAME}" >/dev/null 2>&1 && echo "true" || echo "false")"
+REGISTRY="$(k3d registry list registry.localhost 2>/dev/null | tail -n +2 | cut -d" " -f1)"
+
+echo "{
+    \"deploy\": {
+        \"system-upgrade-controller\": \"$DEPLOY_SYS_UPGRADE\"
+    },
+    \"exists\": $EXISTS,
+    \"name\": \"$NAME\",
+    \"registry\": \"$REGISTRY\"
+}"
