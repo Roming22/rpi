@@ -1,0 +1,19 @@
+---
+- name: Default configuration
+  hosts: all
+  gather_facts: False
+  roles:
+    - default
+
+- name: k3d nodes
+  hosts: k3d
+  roles:
+    - docker
+    - k3d
+    - kubectl
+
+- name: single node clusters
+  hosts: k3d:single_nodes
+  roles:
+    - nas
+    - single_node

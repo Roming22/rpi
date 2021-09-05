@@ -1,0 +1,7 @@
+#!/bin/bash
+
+SOURCE="$(df | grep -E " /mnt/nas$" | cut -d" " -f1)"
+
+echo "{
+    \"source\": \"$SOURCE\"
+}"
