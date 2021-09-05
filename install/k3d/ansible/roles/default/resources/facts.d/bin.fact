@@ -1,0 +1,12 @@
+#!/bin/bash
+CURL="$(curl --version 2>/dev/null | head -1 | sed -e "s/[^0-9]*//" -e "s/[^0-9.].*//")"
+DOCKER="$(docker --version 2>/dev/null | sed -e "s/[^0-9]*//" -e "s/[^0-9.].*//")"
+K3D="$(k3d --version 2>/dev/null | head -1 | sed -e "s/.*v//")"
+KUBECTL="$(kubectl version --short 2>/dev/null | head -1 | sed -e "s/.*v//")"
+
+echo "{
+    \"curl\": \"$CURL\",
+    \"docker\": \"$DOCKER\",
+    \"k3d\": \"$K3D\",
+    \"kubectl\": \"$KUBECTL\"
+}"

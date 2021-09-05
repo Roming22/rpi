@@ -1,0 +1,13 @@
+---
+- name: Install k3d
+  when: ansible_local["bin"]["k3d"] != k3d_version
+  block:
+    - name: Install k3d
+      shell: |
+        curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v{{ k3d_version }} bash
+
+    - name: Bash completion for k3d
+      become: yes
+      become_user: root
+      shell: |
+        k3d completion "$(basename "${SHELL}")" > /etc/bash_completion.d/k3d

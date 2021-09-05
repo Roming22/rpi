@@ -1,0 +1,22 @@
+#!/bin/bash
+CPU="$(uname -m)"
+case "${CPU}" in
+    armv5*) PACKAGE="armv5";;
+    armv6*) PACKAGE="armv6";;
+    armv7*) PACKAGE="arm";;
+    aarch64) PACKAGE="arm64";;
+    x86) PACKAGE="386";;
+    x86_64) PACKAGE="amd64";;
+    i686) PACKAGE="386";;
+    i386) PACKAGE="386";;
+    *) PACKAGE="${CPU}" ;;
+esac
+IP="$(hostname -i | cut -d" " -f1)"
+
+echo "{
+    \"arch\": {
+        \"cpu\": \"${CPU}\",
+        \"package\": \"${PACKAGE}\"
+    },
+    \"ip\": \"$IP\"
+}"
