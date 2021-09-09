@@ -1,0 +1,9 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "mounts": [
+        "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=cached"
+    ]
+}
