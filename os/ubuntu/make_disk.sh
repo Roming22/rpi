@@ -19,7 +19,7 @@ Options:
 
 SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 DISK="$1"
-IMAGES_DIR="${SCRIPT_DIR}/images"
+IMAGES_DIR="${SCRIPT_DIR}/../images"
 TMP_DIR="${SCRIPT_DIR}/tmp"
 
 if [[ ! -e "${SCRIPT_DIR}/tmp/user-data.secret" ]]; then
@@ -33,17 +33,14 @@ if [[ "$UID" != "0" ]]; then
     exit 1
 fi
 
-
-log(){
-    echo -e "$(date +%H:%M:%S)\t$1"
-}
+source "${SCRIPT_DIR}/../utils.env"
 
 
 parse_args(){
     unset DISK
     unset ENABLE_ROOT
     unset FORCE
-    ACTION="create"
+    ACTION="install"
     while [[ "$#" -gt "0" ]]; do
         case "$1" in
             -b|--backup) ACTION="backup";;
@@ -56,45 +53,6 @@ parse_args(){
         esac
         shift
     done
-}
-
-
-list_disks(){
-    lsblk -l -o NAME,TYPE | grep -E "\sdisk$" | cut -d" " -f1
-}
-
-
-wait_for_disk(){
-    # Wait for the disk to be inserted
-    DISK_COUNT="$(list_disks | wc -l)"
-    DISK_LIST="$(list_disks | sed "s:.*:^\0$:" | tr "\n" "|")"
-    DISK_LIST="${DISK_LIST%?}"
-    log "Insert the disk to continue"
-    while [[ $(list_disks | wc -l) -eq "${DISK_COUNT}" ]]; do
-        sleep 1
-    done
-    DISK="/dev/$(list_disks | grep -E -v $DISK_LIST)"
-
-    # Give the OS some time to automount partitions
-    sleep 10
-}
-
-
-get_disk(){
-    if [[ -n "${DISK}" ]]; then
-        if [[ ! -e "${DISK}" ]]; then
-            echo "${DISK} not found" >&2
-            exit 1
-        fi
-    else
-        wait_for_disk
-    fi
-
-    # Check that the boot disk was not found by mistakea
-    if [[ $(df | grep "${DISK}" | grep -c "/boot") != "0" ]]; then
-        echo "Something unexpected happened. Try again." >&2
-        exit 1
-    fi
 }
 
 
@@ -142,36 +100,12 @@ create_user_data(){
 }
 
 
-get_partitions(){
-    df | grep -E "^${DISK}p?[0-9]+\s" | cut -d" " -f1
-}
-
-
-unmount_partitions(){
-    if [[ "$(get_partitions | wc -l)" != "0" ]]; then
-        for PARTITION in "$(get_partitions)"; do
-            umount -l $PARTITION
-            umount -f $PARTITION || true
-        done
-    fi
-    
-}
-
-
 copy_image(){
     unmount_partitions
     log "Copying image to device..."
 
     # Warn user before wiping the disk
-    echo "All data on $DISK is going to be lost."
-    while true; do
-        [[ -z "$FORCE" ]] || break
-        read -r -p "Do you want to continue? [y|N]: " ANSWER
-        case "${ANSWER}" in
-            y|Y) break ;;
-            n|N|"") echo "[Interrupted]"; exit 0;;
-        esac
-    done
+    get_user_confirmation
 
     # Write image to disk
     xzcat "$IMAGE_PATH" | dd bs=4M of="${DISK}" status=progress
@@ -213,13 +147,7 @@ cleanup(){
 }
 
 
-backup(){
-    get_disk
-    sudo dd if="${DISK}" status=progress | xz > ${TMP_DIR}/rpi.img.xz
-}
-
-
-create(){
+install(){
     choose_distribution
     download_image
     create_user_data
@@ -229,27 +157,6 @@ create(){
     cleanup
 }
 
-
-main(){
-    parse_args "$@"
-
-    case "$ACTION" in
-        backup) backup;;
-        create) create;;
-        "")
-            "[ERROR] No action set"
-            exit 1
-            ;;
-        *)
-            "[ERROR] Unknown action: $ACTION"
-            exit 1
-            ;;
-    esac
-
-    log "The device is ejected and can be safely removed."
-    echo
-    echo "[OK]"
-}
 
 
 if [ "$0" = "$BASH_SOURCE" ]; then
