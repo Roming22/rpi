@@ -1,0 +1,17 @@
+FROM ubuntu:25.10
+ARG DEBIAN_FRONTEND=noninteractive
+COPY server/k3d/ansible/hosts.yml /tmp/hosts.yml
+RUN apt-get update \
+    && apt-get install -y ansible git locales rsync vim \
+    && locale-gen en_US.UTF-8 \
+    && update-locale LANG=en_US.UTF-8 \
+    && apt-get install -y apt-transport-https ca-certificates curl gnupg \
+    && K8S_VER=$(grep kubectl_version /tmp/hosts.yml | sed -E 's/.*kubectl_version:[[:space:]]*([0-9]+\.[0-9]+).*/\1/') \    
+    && curl -fsSL "https://pkgs.k8s.io/core:/stable:/v${K8S_VER}/deb/Release.key" | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${K8S_VER}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list \
+    && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
+    && apt-get update \
+    && apt-get install -y kubectl \
+    && apt-get clean \
+    && rm /tmp/hosts.yml

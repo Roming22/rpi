@@ -1,8 +1,4 @@
 ---
-- name: Print all available facts
-  ansible.builtin.debug:
-    var: ansible_facts
-
 - name: Install docker
   when: ansible_local["bin"]["docker"] == ""
   block:
@@ -13,29 +9,41 @@
         name:
           - apt-transport-https
           - ca-certificates
-          - gnupg2
+          - gnupg
         state: present
 
-    - name: Add Docker GPG apt Key
+    - name: Ensure APT keyrings directory exists
       become: yes
       become_user: root
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
 
-    - name: Add Docker Repository
+    - name: Download Docker GPG key
+      become: yes
+      become_user: root
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker repository
       become: yes
       become_user: root
       apt_repository:
-        repo: deb https://download.docker.com/linux/ubuntu {{ ansible_facts.distribution_release }} stable
+        repo: deb [arch={{ ansible_local["arch"]["package"] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts.distribution_release }} stable
         state: present
+        filename: docker
 
     - name: Install Docker
       become: yes
       become_user: root
       package:
-        name: docker-ce
+        name:
+          - docker-ce
         state: present
+        update_cache: true
 
 - name: Enable the docker service
   when: ansible_local["docker"]["service_enabled"] == false

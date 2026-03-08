@@ -1,0 +1,13 @@
+#!/bin/bash
+STATUS="$(dpkg-query -W -f='${Status}' avahi-daemon 2>/dev/null)"
+INSTALLED="false"
+[[ "$STATUS" == "install ok installed" ]] && INSTALLED="true"
+
+ENABLED="$(systemctl is-enabled avahi-daemon 2>/dev/null)"
+SERVICE_ENABLED="false"
+[[ "$ENABLED" == "enabled" ]] && SERVICE_ENABLED="true"
+
+echo "{
+    \"installed\": $INSTALLED,
+    \"service_enabled\": $SERVICE_ENABLED
+}"

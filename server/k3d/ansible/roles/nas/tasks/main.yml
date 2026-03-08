@@ -22,7 +22,8 @@
       become: yes
       become_user: root
       ansible.posix.mount:
-        src: 192.168.72.10:/volume1/cluster
+        src: "truenas.local:/mnt/pool-0/homelab/{{ inventory_hostname }}"
         path: /mnt/nas
+        opts: x-systemd.automount
         state: mounted
         fstype: nfs

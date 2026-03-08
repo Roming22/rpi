@@ -1,22 +1,27 @@
 # Automate the setup of a Raspberry Pi
 
+## How to use the project
+
+Pre-requisites:
+
+* `podman` or `docker`.
+* `Codium`, or any Codium derivative, eg VS Code or Cursor.
+* `Dev Container` extension installed in the IDE.
+
+Get an environment:
+
+* Open the project in the IDE.
+* Click on `Reopen in Container` when the pop-up appears.
+* If you missed the pop-up, go to the IDE command bar and type `> Dev Containers: Rebuild and Reopen in Container`.
+
+You are now in a sandboxed environment.
+
 ## OS
 
 Automate the creation of a bootable USB/SD-Card drive for a Raspberry Pi 4, with the required configuration to run containers.
 
-## Usage
+See [os/README.md](os/README.md)
 
-* Run `./os/configure` to enter the information of the new server. An ssh key will
-be generated if you do not have one.
-* Unplug the disk/SSD card/USB key.
-* Run `sudo ./os/make_disk.sh`.
-* Follow the instructions.
-* Plug the drive in your Rapsberry Pi and power it on. The device should NOT be used until it has completed the first boot setup and rebooted. 
-* You can monitor the first boot with `ssh $USER@$IP sudo tail -f /var/log/cloud-init-output.log` where `$USER` is the value of `default_user` in `tmp/user-data.secret` and `$IP` is the IP of the device on the network.
+## Deploy the server
 
-## Install
-
-Automate the creation of a small kubernetes cluster.
-
-* Set the correct IP for the node in `./install/k3d/hosts.yml`
-* Run `./install/k3d/install.sh`
+See [server/README.md](server/README.md)

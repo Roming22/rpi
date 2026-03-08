@@ -1,0 +1,126 @@
+---
+# - name: Print all available facts
+#   ansible.builtin.debug:
+#     var: ansible_facts
+
+- name: Add or update user in local SSH config for each host
+  ansible.builtin.shell: |
+    set -e
+    ssh_config="{{ (ansible_env.HOME | default(lookup('env','HOME')))| trim }}/.ssh/config"
+    mkdir -p "$(dirname "$ssh_config")"
+    host="{{ item }}"
+    user="{{ hostvars[item].ansible_user | default(remote_user) }}"
+    status="unchanged"
+    if [ ! -f "$ssh_config" ] || ! grep -qE "^Host[[:space:]]${host}([[:space:]]|\$)" "$ssh_config" 2>/dev/null; then
+      printf '\nHost %s\n    User %s\n' "$host" "$user" >> "$ssh_config"
+      status="changed"
+    else
+      current_user=$(awk -v hostname="$host" '
+        /^Host[[:space:]]/ { in_block = ($1 == "Host" && $2 == hostname); next }
+        in_block && /^[[:space:]]*User[[:space:]]/ { print $2; exit }
+      ' "$ssh_config")
+      if [ "${current_user:-}" != "$user" ]; then
+        awk -v hostname="$host" -v username="$user" '
+          /^Host[[:space:]]/ {
+            if (in_block && !user_done) print "    User " username
+            in_block = ($1 == "Host" && $2 == hostname)
+            user_done = 0
+          }
+          in_block && /^[[:space:]]*User[[:space:]]/ {
+            print "    User " username
+            user_done = 1
+            next
+          }
+          END { if (in_block && !user_done) print "    User " username }
+          { print }
+        ' "$ssh_config" > "$ssh_config.tmp" && mv "$ssh_config.tmp" "$ssh_config"
+        status="changed"
+      fi
+    fi
+    echo "SSH_CONFIG_STATUS=$status"
+  delegate_to: localhost
+  register: ssh_config_result
+  changed_when: (ssh_config_result.results | default([]) | selectattr('stdout', 'defined') | map(attribute='stdout') | list | join('')) is search('SSH_CONFIG_STATUS=changed')
+  loop: "{{ ansible_play_hosts }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Wait for cloud-init
+  block:
+    - name: Check if system uses cloud-init
+      ansible.builtin.stat:
+        path: /var/lib/cloud-init
+      register: cloud_init_dir
+    - name: Wait for cloud-init boot to finish
+      ansible.builtin.wait_for:
+        path: /var/lib/cloud-init/instance/boot-finished
+        timeout: 600
+      when: cloud_init_dir.stat is defined and cloud_init_dir.stat.isdir is defined and cloud_init_dir.stat.isdir
+
+- name: Setup Ansible facts
+  block:
+    - name: Ansible var dir
+      become: yes
+      become_user: root
+      file:
+        path: /var/ansible
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: 0775
+
+    - name: Ansible var/tmp dir
+      file:
+        path: /var/ansible/tmp
+        state: directory
+        mode: 0775
+
+    - name: Ensure custom facts directory exists on target
+      become: yes
+      become_user: root
+      file:
+        path: /etc/ansible/facts.d
+        state: directory
+        mode: 0755
+
+    - name: Copy fact scripts into /etc/ansible/facts.d
+      become: yes
+      become_user: root
+      ansible.builtin.copy:
+        src: "{{ role_path }}/resources/facts.d/{{ item }}"
+        dest: "/etc/ansible/facts.d/{{ item }}"
+        mode: "0755"
+      loop:
+        - arch.fact
+        - avahi.fact
+        - bin.fact
+        - cluster.fact
+        - docker.fact
+        - nas.fact
+
+- name: Get Facts
+  block:
+    - name: Get Facts
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+    - name: Print facts
+      ansible.builtin.debug:
+        var: ansible_facts
+
+- name: Install and enable avahi-daemon
+  when: ansible_local["avahi"]["installed"] != true or ansible_local["avahi"]["service_enabled"] != true
+  block:
+    - name: Install avahi-daemon
+      become: yes
+      become_user: root
+      ansible.builtin.apt:
+        name: avahi-daemon
+        state: present
+
+    - name: Enable and start avahi-daemon
+      become: yes
+      become_user: root
+      ansible.builtin.service:
+        name: avahi-daemon
+        state: started
+        enabled: true

@@ -1,0 +1,67 @@
+---
+- name: Install dependencies
+  become: yes
+  become_user: root
+  ansible.builtin.apt:
+    name:
+      - curl
+    state: present
+
+- name: Copy resources
+  ansible.builtin.copy:
+    src: ../resources/
+    dest: /var/ansible/resources/
+
+- name: Deploy local registry
+  when: ansible_local["cluster"]["registry"] == ""
+  ansible.builtin.shell: |
+    k3d registry create registry.localhost -p 5000
+    while ! curl -s http://k3d-registry.localhost:5000/v2/_catalog; do
+      sleep 2
+    done
+
+- name: Deploy k3d cluster
+  when: ansible_local["cluster"]["exists"] != true
+  block:
+    - name: Deploy k3d cluster
+      ansible.builtin.shell: |
+        CLUSTER_NAME="{{ inventory_hostname }}"
+        k3d cluster create "${CLUSTER_NAME}" \
+          --agents 1 \
+          --api-port "0.0.0.0:6443" \
+          --k3s-arg "--cluster-domain=${CLUSTER_NAME}.local@server:0" \
+          --k3s-arg "--tls-san={{ ansible_facts['default_ipv4']['address'] }}@server:0" \
+          --k3s-arg "--tls-san={{ inventory_hostname }}@server:0" \
+          --kubeconfig-switch-context \
+          --kubeconfig-update-default \
+          --port "443:443@loadbalancer" \
+          --registry-use "k3d-registry.localhost:5000" \
+          --servers 1 \
+          --timeout 120s \
+          --volume "/mnt/nas/{{ inventory_hostname }}/storage/persistentvolumes:/mnt/nas@server:0" \
+          --volume "/mnt/nas/{{ inventory_hostname }}/storage/storageclasses/local-path:/var/lib/rancher/k3s/storage@server:0" \
+          --wait
+      args:
+        executable: /bin/bash
+      register: k3d_create
+      failed_when: k3d_create.rc != 0
+
+    - name: Edit kubeconfig to reference the node hostname
+      ansible.builtin.replace:
+        path: "{{ ansible_env.HOME }}/.kube/config"
+        regexp: https://0\.0\.0\.0(:\d+)?
+        replace: "https://{{ inventory_hostname }}\\1"
+
+    - name: Wait for cluster nodes to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+
+    - name: Wait for core pods to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns -n kube-system --timeout=120s 2>/dev/null || true
+        kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=local-path-provisioner -n kube-system --timeout=120s 2>/dev/null || true
+
+- name: Deploy automatic cluster upgrade (system-upgrade-controller)
+  when: ansible_local["cluster"]["deploy"]["system-upgrade-controller"] != suc_version
+  ansible.builtin.shell: |
+    kubectl apply -f https://github.com/rancher/system-upgrade-controller/releases/download/v{{ suc_version }}/system-upgrade-controller.yaml

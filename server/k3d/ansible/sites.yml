@@ -1,0 +1,28 @@
+---
+- name: Default configuration
+  hosts: all
+  gather_facts: False
+  roles:
+    - default
+  post_tasks:
+    - name: Load custom facts so ansible_local is available in later plays
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+    - name: Print all available facts
+      ansible.builtin.debug:
+        var: ansible_facts
+
+- name: k3d nodes
+  hosts: k3d
+  gather_facts: False
+  roles:
+    - docker
+    - k3d
+    - kubectl
+
+- name: single node clusters
+  hosts: k3d:single_nodes
+  gather_facts: False
+  roles:
+    - nas
+    - single_node

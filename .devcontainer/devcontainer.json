@@ -1,9 +1,9 @@
 {
     "build": {
-        "dockerfile": "Dockerfile",
+        "dockerfile": "Containerfile",
         "context": ".."
     },
     "mounts": [
-        "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=consistent"
     ]
 }
