@@ -1,4 +1,4 @@
-FROM ubuntu:25.10
+FROM ubuntu:26.04
 ARG DEBIAN_FRONTEND=noninteractive
 COPY server/k3d/ansible/hosts.yml /tmp/hosts.yml
 RUN apt-get update \

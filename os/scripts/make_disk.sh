@@ -123,7 +123,7 @@ get_disk(){
 
 choose_distribution(){
     TYPE="server"
-    IMAGE_URL="https://cdimage.ubuntu.com/releases/${version_id}/release/ubuntu-${version_id}-preinstalled-${TYPE}-arm64+raspi.img.xz"
+    IMAGE_URL="https://cdimage.ubuntu.com/ubuntu/releases/${version_id}/release/ubuntu-${version_id}-preinstalled-${TYPE}-arm64+raspi.img.xz"
     IMAGE_PATH="${IMAGES_DIR}/ubuntu-${version_id}-${TYPE}.img.xz"
 }
 
@@ -131,7 +131,7 @@ choose_distribution(){
 download_image(){
     log "# Get image"
     if [[ ! -e "${IMAGE_PATH}" ]]; then
-        log "Downloading image..."
+        log "Downloading image from ${IMAGE_URL}..."
         mkdir -p "${IMAGES_DIR}"
         curl -o "${IMAGE_PATH}" "${IMAGE_URL}"
     fi
