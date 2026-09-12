@@ -79,8 +79,23 @@ EOF
 " | ssh-keygen -a 100 -f "${SSH_PRIVATE_IDENTITY}" -o -t "${SSH_CIPHER}" -C "$(whoami)@$(date +"%Y%m%d")"
     fi
     echo "default_user.ssh.authorized_keys: $(cat "$SSH_PUBLIC_IDENTITY" | cut -d" " -f1,2)" >> $IMAGE_CONFIG
+}
 
-    # Ensure SSH config uses $username by default for this host
+clean_known_hosts(){
+    KNOWN_HOSTS="${HOME}/.ssh/known_hosts"
+    if [[ -f "${KNOWN_HOSTS}" ]]; then
+        if ssh-keygen -R "${hostname}" -f "${KNOWN_HOSTS}" >/dev/null 2>&1; then
+            log "Removed ${hostname} from known_hosts"
+        else
+            log "No known_hosts entry for ${hostname}"
+        fi
+    else
+        log "No known_hosts file"
+    fi
+}
+
+ssh_config(){
+# Ensure SSH config uses $username by default for this host
     mkdir -p "${HOME}/.ssh"
     SSH_CONFIG="${HOME}/.ssh/config"
     if [[ ! -f "${SSH_CONFIG}" ]] || ! grep -qE "^Host[[:space:]]${hostname}([[:space:]]|\$)" "${SSH_CONFIG}" 2>/dev/null; then
@@ -108,7 +123,12 @@ SSHEOF
         ' "${SSH_CONFIG}" > "${SSH_CONFIG}.tmp" && mv "${SSH_CONFIG}.tmp" "${SSH_CONFIG}"
         echo "Updated ${hostname} in ~/.ssh/config (User ${username})"
     fi
+}
 
+configure_ssh(){
+    log "# Configuring SSH"
+    clean_known_hosts
+    ssh_config
     log "OK"
 }
 
@@ -117,6 +137,7 @@ main(){
     parse_args "$@"
 
     configure_image
+    configure_ssh
 
     echo "[Done]"
 }
