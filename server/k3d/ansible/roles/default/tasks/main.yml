@@ -6,7 +6,7 @@
 - name: Add or update user in local SSH config for each host
   ansible.builtin.shell: |
     set -e
-    ssh_config="{{ (ansible_env.HOME | default(lookup('env','HOME')))| trim }}/.ssh/config"
+    ssh_config="{{ lookup('env', 'HOME') | trim }}/.ssh/config"
     mkdir -p "$(dirname "$ssh_config")"
     host="{{ item }}"
     user="{{ hostvars[item].ansible_user | default(remote_user) }}"
@@ -108,7 +108,7 @@
         var: ansible_facts
 
 - name: Install and enable avahi-daemon
-  when: ansible_local["avahi"]["installed"] != true or ansible_local["avahi"]["service_enabled"] != true
+  when: ansible_local['avahi']['installed'] != true or ansible_local['avahi']['service_enabled'] != true
   block:
     - name: Install avahi-daemon
       become: yes

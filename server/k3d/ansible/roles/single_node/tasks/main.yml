@@ -13,7 +13,7 @@
     dest: /var/ansible/resources/
 
 - name: Deploy local registry
-  when: ansible_local["cluster"]["registry"] == ""
+  when: ansible_local['cluster']['registry'] == ""
   ansible.builtin.shell: |
     k3d registry create registry.localhost -p 5000
     while ! curl -s http://k3d-registry.localhost:5000/v2/_catalog; do
@@ -21,7 +21,7 @@
     done
 
 - name: Deploy k3d cluster
-  when: ansible_local["cluster"]["exists"] != true
+  when: ansible_local['cluster']['exists'] != true
   block:
     - name: Deploy k3d cluster
       ansible.builtin.shell: |
@@ -48,7 +48,7 @@
 
     - name: Edit kubeconfig to reference the node hostname
       ansible.builtin.replace:
-        path: "{{ ansible_env.HOME }}/.kube/config"
+        path: "{{ ansible_facts['env']['HOME'] }}/.kube/config"
         regexp: https://0\.0\.0\.0(:\d+)?
         replace: "https://{{ inventory_hostname }}\\1"
 
@@ -62,6 +62,6 @@
         kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=local-path-provisioner -n kube-system --timeout=120s 2>/dev/null || true
 
 - name: Deploy automatic cluster upgrade (system-upgrade-controller)
-  when: ansible_local["cluster"]["deploy"]["system-upgrade-controller"] != suc_version
+  when: ansible_local['cluster']['deploy']['system-upgrade-controller'] != suc_version
   ansible.builtin.shell: |
     kubectl apply -f https://github.com/rancher/system-upgrade-controller/releases/download/v{{ suc_version }}/system-upgrade-controller.yaml

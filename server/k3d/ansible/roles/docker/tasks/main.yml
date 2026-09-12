@@ -1,6 +1,6 @@
 ---
 - name: Install docker
-  when: ansible_local["bin"]["docker"] == ""
+  when: ansible_local['bin']['docker'] == ""
   block:
     - name: Install dependencies
       become: yes
@@ -32,7 +32,7 @@
       become: yes
       become_user: root
       apt_repository:
-        repo: deb [arch={{ ansible_local["arch"]["package"] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts.distribution_release }} stable
+        repo: deb [arch={{ ansible_local['arch']['package'] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable
         state: present
         filename: docker
 
@@ -46,7 +46,7 @@
         update_cache: true
 
 - name: Enable the docker service
-  when: ansible_local["docker"]["service_enabled"] == false
+  when: ansible_local['docker']['service_enabled'] == false
   become: yes
   become_user: root
   service:
@@ -55,7 +55,7 @@
     enabled: true
 
 - name: Add user to the docker group
-  when: ansible_local["docker"]["group_set"] == false
+  when: ansible_local['docker']['group_set'] == false
   block:
     - name: Ensure ansible user is added to the docker group
       become: yes

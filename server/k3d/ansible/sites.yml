@@ -5,7 +5,7 @@
   roles:
     - default
   post_tasks:
-    - name: Load custom facts so ansible_local is available in later plays
+    - name: Refresh custom facts for later plays
       ansible.builtin.setup:
         fact_path: /etc/ansible/facts.d
     - name: Print all available facts

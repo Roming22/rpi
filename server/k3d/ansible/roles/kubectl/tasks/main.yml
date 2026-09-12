@@ -1,10 +1,10 @@
 ---
 - name: Install kubectl
-  when: ansible_local["bin"]["kubectl"] != kubectl_version
+  when: ansible_local['bin']['kubectl'] != kubectl_version
   block:
-    - name: Download kubectl "{{ kubectl_version }}" for "{{ ansible_local.arch.package }}"
+    - name: Download kubectl "{{ kubectl_version }}" for "{{ ansible_local['arch']['package'] }}"
       get_url:
-        url: https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/{{ ansible_local.arch.package }}/kubectl
+        url: https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/{{ ansible_local['arch']['package'] }}/kubectl
         dest: /var/ansible/tmp/kubectl
 
     - name: Install kubectl
