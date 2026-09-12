@@ -1,6 +1,6 @@
 {
     "build": {
-        "dockerfile": "Containerfile",
+        "dockerfile": "../tools/container/Containerfile",
         "context": ".."
     },
     "mounts": [
