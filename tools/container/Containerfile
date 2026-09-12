@@ -1,8 +1,10 @@
 FROM ubuntu:26.04
 ARG DEBIAN_FRONTEND=noninteractive
 COPY server/k3d/ansible/hosts.yml /tmp/hosts.yml
+COPY tools/ansible/requirements.yml /tmp/collections-requirements.yml
 RUN apt-get update \
     && apt-get install -y ansible git locales rsync vim \
+    && ansible-galaxy collection install -r /tmp/collections-requirements.yml \
     && locale-gen en_US.UTF-8 \
     && update-locale LANG=en_US.UTF-8 \
     && apt-get install -y apt-transport-https ca-certificates curl gnupg \
@@ -14,4 +16,4 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y kubectl \
     && apt-get clean \
-    && rm /tmp/hosts.yml
+    && rm -rf /tmp/*
