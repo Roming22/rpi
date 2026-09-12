@@ -1,0 +1,3 @@
+---
+skooner_image: k3d-registry.localhost:5000/skooner:stable
+skooner_repo: https://github.com/skooner-k8s/skooner.git

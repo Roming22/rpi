@@ -1,0 +1,76 @@
+---
+- name: Check if Skooner image exists in local registry
+  ansible.builtin.shell: curl -sf http://localhost:5000/v2/skooner/tags/list | grep -q stable
+  register: skooner_image_exists
+  failed_when: false
+  changed_when: false
+
+- name: Build Skooner image for arm64
+  when: skooner_image_exists.rc != 0
+  block:
+    - name: Clone Skooner repository
+      ansible.builtin.git:
+        repo: "{{ skooner_repo }}"
+        dest: /tmp/skooner-build
+        depth: 1
+        force: true
+
+    - name: Build and push Skooner Docker image
+      ansible.builtin.shell: |
+        docker build -t {{ skooner_image }} /tmp/skooner-build
+        docker tag {{ skooner_image }} localhost:5000/skooner:stable
+        docker push localhost:5000/skooner:stable
+      changed_when: true
+
+- name: Render Skooner manifests
+  ansible.builtin.template:
+    src: skooner.yml.j2
+    dest: /var/ansible/resources/k8s/skooner.yml
+    mode: "0644"
+
+- name: Copy Skooner RBAC manifests
+  ansible.builtin.copy:
+    src: skooner-rbac.yml
+    dest: /var/ansible/resources/k8s/skooner-rbac.yml
+    mode: "0644"
+
+- name: Render Skooner Ingress manifest
+  ansible.builtin.template:
+    src: skooner-ingress.yml.j2
+    dest: /var/ansible/resources/k8s/skooner-ingress.yml
+    mode: "0644"
+
+- name: Deploy Skooner
+  ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/skooner.yml
+  changed_when: true
+
+- name: Deploy Skooner RBAC
+  ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/skooner-rbac.yml
+  changed_when: true
+
+- name: Deploy Skooner Ingress
+  ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/skooner-ingress.yml
+  changed_when: true
+
+- name: Wait for Skooner deployment
+  ansible.builtin.shell: |
+    kubectl --namespace kube-system rollout status deployment/skooner --timeout=300s
+
+- name: Wait for Skooner pod
+  ansible.builtin.shell: |
+    kubectl --namespace kube-system wait --for=condition=Ready pod \
+      -l k8s-app=skooner --timeout=300s
+
+- name: Get Skooner service account token
+  ansible.builtin.shell: |
+    kubectl get secret skooner-sa-token -n kube-system -o jsonpath='{.data.token}' | base64 -d
+  register: skooner_token
+  changed_when: false
+
+- name: Display Skooner URL
+  ansible.builtin.debug:
+    msg: "Skooner is available at https://{{ inventory_hostname }}"
+
+- name: Display Skooner login token
+  ansible.builtin.debug:
+    msg: "Login token: {{ skooner_token.stdout }}"
