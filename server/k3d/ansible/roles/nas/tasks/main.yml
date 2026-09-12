@@ -1,6 +1,6 @@
 ---
 - name: Mount the NAS
-  when: ansible_local['nas']['source'] == ""
+  when: ansible_facts['ansible_local']['nas']['source'] == ""
   block:
     - name: Create a directory if it does not exist
       become: yes

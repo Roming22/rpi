@@ -108,7 +108,7 @@
         var: ansible_facts
 
 - name: Install and enable avahi-daemon
-  when: ansible_local['avahi']['installed'] != true or ansible_local['avahi']['service_enabled'] != true
+  when: ansible_facts['ansible_local']['avahi']['installed'] != true or ansible_facts['ansible_local']['avahi']['service_enabled'] != true
   block:
     - name: Install avahi-daemon
       become: yes

@@ -1,6 +1,6 @@
 ---
 - name: Install k3d
-  when: ansible_local['bin']['k3d'] != k3d_version
+  when: ansible_facts['ansible_local']['bin']['k3d'] != k3d_version
   block:
     - name: Install k3d
       shell: |
