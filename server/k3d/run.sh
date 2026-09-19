@@ -49,7 +49,7 @@ run_ansible(){
 get_kubeconfig(){
     mkdir -p "${HOME}/.kube"
     scp "${host}:.kube/config" "${HOME}/.kube/config.${host}"
-    ln -fs "${HOME}/.kube/config.${host}" "${HOME}/.kube/config"
+    ln -fs "config.${host}" "${HOME}/.kube/config"
 }
 
 
