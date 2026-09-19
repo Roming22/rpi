@@ -1,7 +1,23 @@
 #!/bin/bash
-NAME="$(hostname -s)"
+# Cluster is created as inventory_hostname (often FQDN like k3d0.iot).
+# hostname -s alone misses that; probe all aliases from hostname -A.
+SHORT="$(hostname -s)"
+NAME=""
+EXISTS="false"
+for candidate in $(hostname -A 2>/dev/null) "${SHORT}"; do
+    [[ -z "${candidate}" ]] && continue
+    if k3d cluster list "${candidate}" >/dev/null 2>&1; then
+        NAME="${candidate}"
+        EXISTS="true"
+        break
+    fi
+done
+if [[ -z "${NAME}" ]]; then
+    NAME="$(hostname -A 2>/dev/null | awk '{print $1}')"
+    [[ -z "${NAME}" ]] && NAME="${SHORT}"
+fi
+
 DEPLOY_SYS_UPGRADE="$(kubectl --kubeconfig="${HOME}/.kube/config" get deployment system-upgrade-controller -n system-upgrade -o yaml 2>/dev/null | grep " image:" | sed -e "s/.*v//")"
-EXISTS="$(k3d cluster list "${NAME}" >/dev/null 2>&1 && echo "true" || echo "false")"
 REGISTRY="$(k3d registry list registry.localhost 2>/dev/null | tail -n +2 | cut -d" " -f1)"
 
 echo "{
