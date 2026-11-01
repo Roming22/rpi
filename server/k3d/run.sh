@@ -6,7 +6,7 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 
 usage() {
-    ERROR="$1"
+    ERROR="${1:-}"
     [[ -z "${ERROR}" ]] || echo "$ERROR"
     echo "
 Options:

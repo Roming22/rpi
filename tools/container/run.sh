@@ -47,8 +47,10 @@ run() {
         -v "${HOME}/.kube:/root/.kube" \
         -v "${HOME}/.ssh:/root/.ssh" \
         -e TERM="${TERM:-xterm}" \
+        --workdir "/workspace" \
+        --entrypoint "bash" \
         "${IMAGE_NAME}" \
-        bash -lc 'cd /workspace && exec "$@"' bash "$@"
+        -lc "$@"
 }
 
 main() {
