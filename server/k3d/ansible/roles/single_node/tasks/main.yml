@@ -60,8 +60,3 @@
       ansible.builtin.shell: |
         kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns -n kube-system --timeout=120s 2>/dev/null || true
         kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=local-path-provisioner -n kube-system --timeout=120s 2>/dev/null || true
-
-- name: Deploy automatic cluster upgrade (system-upgrade-controller)
-  when: ansible_facts['ansible_local']['cluster']['deploy']['system-upgrade-controller'] != suc_version
-  ansible.builtin.shell: |
-    kubectl apply -f https://github.com/rancher/system-upgrade-controller/releases/download/v{{ suc_version }}/system-upgrade-controller.yaml

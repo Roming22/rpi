@@ -17,13 +17,9 @@ if [[ -z "${NAME}" ]]; then
     [[ -z "${NAME}" ]] && NAME="${SHORT}"
 fi
 
-DEPLOY_SYS_UPGRADE="$(kubectl --kubeconfig="${HOME}/.kube/config" get deployment system-upgrade-controller -n system-upgrade -o yaml 2>/dev/null | grep " image:" | sed -e "s/.*v//")"
 REGISTRY="$(k3d registry list registry.localhost 2>/dev/null | tail -n +2 | cut -d" " -f1)"
 
 echo "{
-    \"deploy\": {
-        \"system-upgrade-controller\": \"$DEPLOY_SYS_UPGRADE\"
-    },
     \"exists\": $EXISTS,
     \"name\": \"$NAME\",
     \"registry\": \"$REGISTRY\"
