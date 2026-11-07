@@ -30,16 +30,39 @@
   ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
   changed_when: true
 
+- name: Wait for all ArgoCD apps to be healthy
+  ansible.builtin.shell: |
+    set -o pipefail
+    output=$(kubectl get applications.argoproj.io -n argocd \
+      -o jsonpath='{range .items[*]}{.metadata.name}={.status.health.status}{"\n"}{end}')
+    echo "$output"
+    [ -n "$output" ]
+    ! echo "$output" | grep -Ev '=Healthy$'
+  register: argocd_apps_healthy
+  retries: 60
+  delay: 10
+  until: argocd_apps_healthy.rc == 0
+  changed_when: false
+
 - name: Get ArgoCD service account token
   ansible.builtin.shell: |
     kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
   register: argocd_token
   changed_when: false
 
-- name: Display ArgoCD URL
-  ansible.builtin.debug:
-    msg: "ArgoCD is available at https://argocd.{{ inventory_hostname }}"
+- name: Get Headlamp service account token
+  ansible.builtin.shell: |
+    kubectl -n kube-system get secret headlamp-admin -o jsonpath="{.data.token}" | base64 -d
+  register: headlamp_token
+  changed_when: false
 
-- name: Display ArgoCD login token
+- name: Display information
   ansible.builtin.debug:
-    msg: "Login token: {{ argocd_token.stdout }}"
+    msg:
+      - "ArgoCD:"
+      - "  URL: https://argocd.{{ inventory_hostname }}"
+      - "  Username: admin"
+      - "  Password: {{ argocd_token.stdout }}"
+      - "Headlamp:"
+      - "  URL: https://{{ inventory_hostname }}"
+      - "  Token: {{ headlamp_token.stdout }}"
