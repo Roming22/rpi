@@ -1,0 +1,45 @@
+---
+- name: Copy ArgoCD manifests
+  ansible.builtin.copy:
+    src: argocd-namespace.yml
+    dest: /var/ansible/resources/k8s/argocd-namespace.yml
+    mode: "0644"
+
+- name: Create ArgoCD Namespace
+  ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/argocd-namespace.yml
+  changed_when: true
+
+- name: Deploy ArgoCD
+  ansible.builtin.shell: kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/{{argocd_version}}/manifests/install.yaml
+  changed_when: true
+
+- name: Wait for ArgoCD deployment
+  ansible.builtin.shell: |
+    kubectl --namespace argocd rollout status deployment/argocd-server --timeout=300s
+
+- name: Wait for ArgoCD UI pod
+  ansible.builtin.shell: |
+    kubectl --namespace argocd wait --for=condition=Ready pod \
+      -l app.kubernetes.io/name=argocd-server --timeout=300s
+
+- name: Wait for Application CRD
+  ansible.builtin.shell: |
+    kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=120s
+
+- name: Deploy ArgoCD app-of-apps
+  ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
+  changed_when: true
+
+- name: Get ArgoCD service account token
+  ansible.builtin.shell: |
+    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  register: argocd_token
+  changed_when: false
+
+- name: Display ArgoCD URL
+  ansible.builtin.debug:
+    msg: "ArgoCD is available at https://argocd.{{ inventory_hostname }}"
+
+- name: Display ArgoCD login token
+  ansible.builtin.debug:
+    msg: "Login token: {{ argocd_token.stdout }}"
