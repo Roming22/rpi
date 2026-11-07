@@ -26,4 +26,3 @@
   roles:
     - nas
     - single_node
-    - skooner
