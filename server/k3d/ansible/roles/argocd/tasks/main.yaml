@@ -1,36 +1,41 @@
 ---
-- name: Copy ArgoCD manifests
-  ansible.builtin.copy:
-    src: argocd-namespace.yml
-    dest: /var/ansible/resources/k8s/argocd-namespace.yml
-    mode: "0644"
-
-- name: Create ArgoCD Namespace
-  ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/argocd-namespace.yml
-  changed_when: true
-
 - name: Deploy ArgoCD
-  ansible.builtin.shell: kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/{{argocd_version}}/manifests/install.yaml
-  changed_when: true
+  when: ansible_facts['ansible_local']['argocd']['installed'] != true
+  block:
+    - name: Copy ArgoCD manifests
+      ansible.builtin.copy:
+        src: argocd-namespace.yml
+        dest: /var/ansible/resources/k8s/argocd-namespace.yml
+        mode: "0644"
 
-- name: Wait for ArgoCD deployment
-  ansible.builtin.shell: |
-    kubectl --namespace argocd rollout status deployment/argocd-server --timeout=300s
+    - name: Create ArgoCD Namespace
+      ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/argocd-namespace.yml
+      changed_when: true
 
-- name: Wait for ArgoCD UI pod
-  ansible.builtin.shell: |
-    kubectl --namespace argocd wait --for=condition=Ready pod \
-      -l app.kubernetes.io/name=argocd-server --timeout=300s
+    - name: Apply ArgoCD manifests
+      ansible.builtin.shell: kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/{{argocd_version}}/manifests/install.yaml
+      changed_when: true
 
-- name: Wait for Application CRD
-  ansible.builtin.shell: |
-    kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=120s
+    - name: Wait for ArgoCD deployment
+      ansible.builtin.shell: |
+        kubectl --namespace argocd rollout status deployment/argocd-server --timeout=300s
+
+    - name: Wait for ArgoCD UI pod
+      ansible.builtin.shell: |
+        kubectl --namespace argocd wait --for=condition=Ready pod \
+          -l app.kubernetes.io/name=argocd-server --timeout=300s
+
+    - name: Wait for Application CRD
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=120s
 
 - name: Deploy ArgoCD app-of-apps
+  when: ansible_facts['ansible_local']['argocd']['app_of_apps'] != true
   ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
   changed_when: true
 
 - name: Wait for all ArgoCD apps to be healthy
+  when: ansible_facts['ansible_local']['argocd']['apps_healthy'] != true
   ansible.builtin.shell: |
     set -o pipefail
     output=$(kubectl get applications.argoproj.io -n argocd \

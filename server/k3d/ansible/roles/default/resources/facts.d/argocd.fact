@@ -1,0 +1,28 @@
+#!/bin/bash
+KUBECONFIG="${HOME}/.kube/config"
+KUBECTL=(kubectl --kubeconfig="${KUBECONFIG}")
+
+INSTALLED="false"
+if "${KUBECTL[@]}" get deployment argocd-server -n argocd >/dev/null 2>&1; then
+    INSTALLED="true"
+fi
+
+APP_OF_APPS="false"
+if "${KUBECTL[@]}" get application.argoproj.io app-of-apps -n argocd >/dev/null 2>&1; then
+    APP_OF_APPS="true"
+fi
+
+APPS_HEALTHY="false"
+if [[ "${APP_OF_APPS}" == "true" ]]; then
+    output="$("${KUBECTL[@]}" get applications.argoproj.io -n argocd \
+        -o jsonpath='{range .items[*]}{.metadata.name}={.status.health.status}{"\n"}{end}' 2>/dev/null)"
+    if [[ -n "${output}" ]] && ! echo "${output}" | grep -Ev '=Healthy$' >/dev/null; then
+        APPS_HEALTHY="true"
+    fi
+fi
+
+echo "{
+    \"installed\": ${INSTALLED},
+    \"app_of_apps\": ${APP_OF_APPS},
+    \"apps_healthy\": ${APPS_HEALTHY}
+}"
