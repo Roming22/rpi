@@ -1,6 +1,10 @@
 ---
 # Keep background apt (and the hourly reboot cron) from racing Ansible, then
 # drain any in-flight dpkg work before continuing.
+- name: Wait for SSH before pausing auto-updates
+  ansible.builtin.wait_for_connection:
+    timeout: 600
+
 - name: Disable apt timers/services during provisioning
   become: true
   ansible.builtin.systemd:
