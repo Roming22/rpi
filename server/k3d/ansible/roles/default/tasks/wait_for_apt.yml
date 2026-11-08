@@ -1,10 +1,25 @@
 ---
-# Wait until no process holds the dpkg/apt locks (e.g. unattended-upgrades, apt-daily).
+# Wait until apt auto-update work is gone (process exit + locks free).
 # apt/dpkg use POSIX lockf (F_SETLK); flock(2) does not conflict with those on Linux.
+# Lock gaps between unattended-upgr packages look free; also require those procs gone.
 # First-boot / daily upgrades on slow disks or large pending sets often exceed 10 minutes.
 - name: Wait for APT locks to be released
   become: true
   ansible.builtin.shell: |
+    set -euo pipefail
+    # Basename match only (pgrep -x). Avoid -f on marker strings that appear in this script.
+    if pgrep -x unattended-upgr >/dev/null 2>&1 \
+      || pgrep -x unattended-upgrade >/dev/null 2>&1; then
+      echo "Auto-update processes still running:"
+      pgrep -a -x unattended-upgr 2>/dev/null || true
+      pgrep -a -x unattended-upgrade 2>/dev/null || true
+      exit 1
+    fi
+    if pgrep -f '/usr/lib/apt/apt[.]systemd[.]daily' >/dev/null 2>&1; then
+      echo "Auto-update processes still running:"
+      pgrep -af '/usr/lib/apt/apt[.]systemd[.]daily' || true
+      exit 1
+    fi
     python3 - <<'PY'
     import fcntl
     import glob

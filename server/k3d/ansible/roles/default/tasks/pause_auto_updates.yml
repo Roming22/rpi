@@ -1,15 +1,18 @@
 ---
 # Keep background apt (and the hourly reboot cron) from racing Ansible, then
 # drain any in-flight dpkg work before continuing.
-- name: Disable apt timers during provisioning
+- name: Disable apt timers/services during provisioning
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
     state: stopped
     enabled: false
   loop:
+    # Timers alone leave an in-flight apt-daily-upgrade.service / unattended-upgr running.
     - apt-daily.timer
     - apt-daily-upgrade.timer
+    - apt-daily.service
+    - apt-daily-upgrade.service
   failed_when: false
 
 - name: Disable hourly system-upgrade cron during provisioning

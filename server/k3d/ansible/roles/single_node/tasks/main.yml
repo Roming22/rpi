@@ -104,7 +104,7 @@
     - name: Wait for local-path-provisioner pods to appear
       ansible.builtin.command: >
         kubectl get pod -n kube-system
-        -l app.kubernetes.io/name=local-path-provisioner -o name
+        -l app=local-path-provisioner -o name
       register: local_path_pods
       retries: 30
       delay: 2
@@ -114,7 +114,7 @@
     - name: Wait for local-path-provisioner pods to be ready
       ansible.builtin.command: >
         kubectl wait --for=condition=Ready pod
-        -l app.kubernetes.io/name=local-path-provisioner
+        -l app=local-path-provisioner
         -n kube-system --timeout=120s
 
     - name: Refresh local facts after cluster create
