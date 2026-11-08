@@ -1,0 +1,39 @@
+---
+- name: Check for ArgoCD initial admin secret
+  ansible.builtin.command: kubectl -n argocd get secret argocd-initial-admin-secret
+  register: argocd_admin_secret
+  changed_when: false
+  failed_when: false
+
+- name: Get ArgoCD initial admin password
+  when: argocd_admin_secret.rc == 0
+  ansible.builtin.command: >
+    kubectl -n argocd get secret argocd-initial-admin-secret
+    -o jsonpath={.data.password}
+  register: argocd_admin_password_b64
+  changed_when: false
+
+- name: Check for Headlamp admin secret
+  ansible.builtin.command: kubectl -n kube-system get secret headlamp-admin
+  register: headlamp_secret
+  changed_when: false
+  failed_when: false
+
+- name: Get Headlamp admin token
+  when: headlamp_secret.rc == 0
+  ansible.builtin.command: >
+    kubectl -n kube-system get secret headlamp-admin
+    -o jsonpath={.data.token}
+  register: headlamp_admin_token_b64
+  changed_when: false
+
+- name: Display information
+  ansible.builtin.debug:
+    msg:
+      - "ArgoCD:"
+      - "  URL: https://argocd.{{ inventory_hostname }}"
+      - "  Username: admin"
+      - "  Password: {{ argocd_admin_password_b64.stdout | b64decode if argocd_admin_secret.rc == 0 else 'unavailable' }}"
+      - "Headlamp:"
+      - "  URL: https://{{ inventory_hostname }}"
+      - "  Token: {{ headlamp_admin_token_b64.stdout | b64decode if headlamp_secret.rc == 0 else 'unavailable' }}"

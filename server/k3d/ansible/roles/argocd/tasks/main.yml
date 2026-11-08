@@ -98,34 +98,3 @@
   delay: 10
   until: argocd_apps_healthy.rc == 0
   changed_when: false
-
-- name: Check for ArgoCD initial admin secret
-  ansible.builtin.command: kubectl -n argocd get secret argocd-initial-admin-secret
-  register: argocd_admin_secret
-  changed_when: false
-  failed_when: false
-
-- name: Check for Headlamp admin secret
-  ansible.builtin.command: kubectl -n kube-system get secret headlamp-admin
-  register: headlamp_secret
-  changed_when: false
-  failed_when: false
-
-- name: Display information
-  ansible.builtin.debug:
-    msg:
-      - "ArgoCD:"
-      - "  URL: https://argocd.{{ inventory_hostname }}"
-      - "  Username: admin"
-      - >-
-          Password: {{
-            'kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d'
-            if argocd_admin_secret.rc == 0 else 'unavailable'
-          }}
-      - "Headlamp:"
-      - "  URL: https://{{ inventory_hostname }}"
-      - >-
-          Token: {{
-            'kubectl -n kube-system get secret headlamp-admin -o jsonpath="{.data.token}" | base64 -d'
-            if headlamp_secret.rc == 0 else 'unavailable'
-          }}
