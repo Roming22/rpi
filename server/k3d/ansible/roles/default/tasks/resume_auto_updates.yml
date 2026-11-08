@@ -56,11 +56,12 @@
     state: absent
 
 
-- name: Start unattended-upgrades if present
+- name: Re-enable unattended-upgrades after provisioning
   become: true
   ansible.builtin.systemd:
     name: unattended-upgrades
     state: started
+    enabled: true
   register: unattended_upgrades_resume
   failed_when:
     - unattended_upgrades_resume is failed

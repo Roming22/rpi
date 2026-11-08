@@ -26,13 +26,6 @@
     - name: Wait for APT locks to be released
       ansible.builtin.include_tasks: wait_for_apt.yml
 
-    - name: Stop unattended-upgrades after active apt work finishes
-      become: true
-      ansible.builtin.systemd:
-        name: unattended-upgrades
-        state: stopped
-      failed_when: false
-
     - name: Drain reboot-required up to 3 times
       ansible.builtin.include_tasks: drain_reboot_required.yml
       loop: "{{ range(1, 4) | list }}"

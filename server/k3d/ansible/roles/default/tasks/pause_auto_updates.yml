@@ -37,6 +37,17 @@
     content: |
       Unattended-Upgrade::Automatic-Reboot "false";
 
+- name: Disable unattended-upgrades during provisioning
+  become: true
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    state: stopped
+    enabled: false
+  register: unattended_upgrades_pause
+  failed_when:
+    - unattended_upgrades_pause is failed
+    - "'Could not find the requested service' not in (unattended_upgrades_pause.msg | default(''))"
+
 - name: Check for needrestart conf.d
   ansible.builtin.stat:
     path: /etc/needrestart/conf.d
