@@ -20,6 +20,10 @@
       when: cloud_init_bin.rc == 0
       register: cloud_init_status
       changed_when: false
+      # rc 2 = done with recoverable errors; still finished
+      failed_when: >-
+        'status: done' not in cloud_init_status.stdout
+        and 'status: error' not in cloud_init_status.stdout
 
     - name: Wait for APT locks to be released
       ansible.builtin.include_tasks: wait_for_apt.yml
