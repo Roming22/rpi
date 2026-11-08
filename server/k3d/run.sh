@@ -123,8 +123,12 @@ main(){
     for host in "${HOSTS[@]}"; do
         log "# Running ansible on ${host}"
         run_ansible
-        get_kubeconfig
-        print_cluster_info
+        if ssh "$host" test -f .kube/config; then
+            get_kubeconfig
+            print_cluster_info
+        else
+            log "No kubeconfig on ${host} yet (skipped scp)"
+        fi
         echo
     done
     log "All hosts deployed"

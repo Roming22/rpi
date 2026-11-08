@@ -2,11 +2,12 @@
 KUBECONFIG="${HOME}/.kube/config"
 KUBECTL=(kubectl --kubeconfig="${KUBECONFIG}")
 
-INSTALLED="false"
+VERSION=""
 available="$("${KUBECTL[@]}" get deployment argocd-server -n argocd \
   -o jsonpath='{.status.availableReplicas}' 2>/dev/null || true)"
-if [[ "${available:-0}" =~ ^[0-9]+$ ]] && [[ "${available}" -ge 1 ]]; then
-    INSTALLED="true"
+if [[ "${available:-0}" =~ ^[0-9]+$ ]] && [[ "${available}" -ge 1 ]] \
+  && [[ -f /var/ansible/argocd_version ]]; then
+    VERSION="$(tr -d '[:space:]' </var/ansible/argocd_version)"
 fi
 
 APP_OF_APPS="false"
@@ -24,7 +25,7 @@ if [[ "${APP_OF_APPS}" == "true" ]]; then
 fi
 
 echo "{
-    \"installed\": ${INSTALLED},
+    \"version\": \"${VERSION}\",
     \"app_of_apps\": ${APP_OF_APPS},
     \"apps_healthy\": ${APPS_HEALTHY}
 }"

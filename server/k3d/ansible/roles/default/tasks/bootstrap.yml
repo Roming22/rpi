@@ -8,7 +8,7 @@
     host="{{ item }}"
     user="{{ hostvars[item].ansible_user | default(remote_user) }}"
     status="unchanged"
-    if [ ! -f "$ssh_config" ] || ! grep -qE "^Host[[:space:]]${host}([[:space:]]|\$)" "$ssh_config" 2>/dev/null; then
+    if [ ! -f "$ssh_config" ] || ! grep -qxF "Host ${host}" "$ssh_config" 2>/dev/null; then
       printf '\nHost %s\n    User %s\n' "$host" "$user" >> "$ssh_config"
       status="changed"
     else
