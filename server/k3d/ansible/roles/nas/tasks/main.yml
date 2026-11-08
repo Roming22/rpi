@@ -1,6 +1,7 @@
 ---
 - name: Mount the NAS
-  when: ansible_facts['ansible_local']['nas']['source'] == ""
+  vars:
+    nas_expected_source: "truenas.local:/mnt/pool-0/homelab/{{ inventory_hostname }}"
   block:
     - name: Create a directory if it does not exist
       become: true
@@ -18,6 +19,7 @@
         lock_timeout: 300
 
     - name: Wait for truenas.local to resolve
+      when: ansible_facts['ansible_local']['nas']['source'] != nas_expected_source
       ansible.builtin.command: getent hosts truenas.local
       register: truenas_dns
       retries: 30
@@ -25,10 +27,11 @@
       until: truenas_dns.rc == 0
       changed_when: false
 
+    # Idempotent: corrects a wrong/stale mount as well as creating a missing one.
     - name: Mount NAS
       become: true
       ansible.posix.mount:
-        src: "truenas.local:/mnt/pool-0/homelab/{{ inventory_hostname }}"
+        src: "{{ nas_expected_source }}"
         path: /mnt/nas
         opts: _netdev,x-systemd.automount
         state: mounted

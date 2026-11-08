@@ -46,19 +46,18 @@
 - name: Setup Ansible facts
   ansible.builtin.include_tasks: ensure_facts.yml
 
-- name: Install and enable avahi-daemon
-  when: ansible_facts['ansible_local']['avahi']['installed'] != true or ansible_facts['ansible_local']['avahi']['service_enabled'] != true
-  block:
-    - name: Install avahi-daemon
-      become: true
-      ansible.builtin.apt:
-        name: avahi-daemon
-        state: present
-        lock_timeout: 300
+- name: Install avahi-daemon
+  when: ansible_facts['ansible_local']['avahi']['installed'] != true
+  become: true
+  ansible.builtin.apt:
+    name: avahi-daemon
+    state: present
+    lock_timeout: 300
 
-    - name: Enable and start avahi-daemon
-      become: true
-      ansible.builtin.service:
-        name: avahi-daemon
-        state: started
-        enabled: true
+# Always ensure running: enabled-but-stopped would break mDNS (e.g. truenas.local).
+- name: Enable and start avahi-daemon
+  become: true
+  ansible.builtin.service:
+    name: avahi-daemon
+    state: started
+    enabled: true

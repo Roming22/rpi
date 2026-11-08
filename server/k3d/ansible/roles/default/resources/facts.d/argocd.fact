@@ -3,7 +3,9 @@ KUBECONFIG="${HOME}/.kube/config"
 KUBECTL=(kubectl --kubeconfig="${KUBECONFIG}")
 
 INSTALLED="false"
-if "${KUBECTL[@]}" get deployment argocd-server -n argocd >/dev/null 2>&1; then
+available="$("${KUBECTL[@]}" get deployment argocd-server -n argocd \
+  -o jsonpath='{.status.availableReplicas}' 2>/dev/null || true)"
+if [[ "${available:-0}" =~ ^[0-9]+$ ]] && [[ "${available}" -ge 1 ]]; then
     INSTALLED="true"
 fi
 

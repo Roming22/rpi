@@ -71,17 +71,24 @@ run_ansible(){
 
 get_kubeconfig(){
     mkdir -p "${HOME}/.kube"
-    scp "${host}:.kube/config" "${HOME}/.kube/config.${host}"
-    ln -fs "config.${host}" "${HOME}/.kube/config"
+    local dest="${HOME}/.kube/config.${host}"
+    scp "${host}:.kube/config" "${dest}"
+    # Only point the default kubeconfig at this host for single-host runs.
+    if [[ "${#HOSTS[@]}" -eq 1 ]]; then
+        ln -fs "config.${host}" "${HOME}/.kube/config"
+    else
+        log "Saved kubeconfig to ${dest} (multi-host run; left ~/.kube/config unchanged)"
+    fi
 }
 
 
 
 print_cluster_info(){
+    local kubeconfig="${HOME}/.kube/config.${host}"
     echo; echo "[Nodes]"
-    kubectl get nodes
+    kubectl --kubeconfig="${kubeconfig}" get nodes
     echo; echo "[Deployments]"
-    kubectl get deployment --all-namespaces
+    kubectl --kubeconfig="${kubeconfig}" get deployment --all-namespaces
 }
 
 

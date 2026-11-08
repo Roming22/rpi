@@ -6,11 +6,24 @@
       ansible.builtin.command: kubectl apply -f -
       args:
         stdin: "{{ lookup('file', role_path + '/files/argocd-namespace.yml') }}"
-      changed_when: true
+      register: argocd_ns_apply
+      changed_when: "'configured' in argocd_ns_apply.stdout or 'created' in argocd_ns_apply.stdout"
+
+    - name: Download ArgoCD install manifests
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml
+        dest: /var/ansible/tmp/argocd-install.yaml
+        mode: "0644"
+        checksum: "{{ argocd_install_checksum }}"
 
     - name: Apply ArgoCD manifests
-      ansible.builtin.shell: kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/{{argocd_version}}/manifests/install.yaml
-      changed_when: true
+      ansible.builtin.command: >
+        kubectl apply -n argocd --server-side --force-conflicts
+        -f /var/ansible/tmp/argocd-install.yaml
+      register: argocd_install_apply
+      changed_when: >
+        'created' in argocd_install_apply.stdout
+        or 'configured' in argocd_install_apply.stdout
 
     - name: Wait for ArgoCD deployment
       ansible.builtin.command: >
@@ -33,8 +46,10 @@
         -l app.kubernetes.io/name=argocd-server --timeout=300s
 
     - name: Wait for Application CRD
-      ansible.builtin.shell: |
-        kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=120s
+      ansible.builtin.command: >
+        kubectl wait --for=condition=Established
+        crd/applications.argoproj.io --timeout=120s
+      changed_when: false
 
     - name: Refresh local facts after Argo CD install
       ansible.builtin.setup:
@@ -44,9 +59,19 @@
 - name: Deploy ArgoCD app-of-apps
   when: ansible_facts['ansible_local']['argocd']['app_of_apps'] != true
   block:
+    - name: Check app-of-apps URL is reachable
+      ansible.builtin.uri:
+        url: "{{ argocd_app_of_apps_url }}"
+        method: GET
+        status_code: 200
+
     - name: Apply ArgoCD app-of-apps
-      ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
-      changed_when: true
+      ansible.builtin.command: >
+        kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
+      register: argocd_app_of_apps_apply
+      changed_when: >
+        'created' in argocd_app_of_apps_apply.stdout
+        or 'configured' in argocd_app_of_apps_apply.stdout
 
     - name: Refresh local facts after app-of-apps
       ansible.builtin.setup:

@@ -7,6 +7,7 @@
         url: https://github.com/k3d-io/k3d/releases/download/v{{ k3d_version }}/k3d-linux-{{ ansible_facts['ansible_local']['arch']['package'] }}
         dest: /var/ansible/tmp/k3d
         mode: "0755"
+        checksum: "{{ k3d_checksums[ansible_facts['ansible_local']['arch']['package']] }}"
 
     - name: Install k3d
       become: true
@@ -23,7 +24,14 @@
         path: /var/ansible/tmp/k3d
         state: absent
 
-    - name: Bash completion for k3d
+    - name: Generate k3d bash completion
+      ansible.builtin.command: k3d completion bash
+      register: k3d_completion
+      changed_when: false
+
+    - name: Install k3d bash completion
       become: true
-      ansible.builtin.shell: k3d completion bash > /etc/bash_completion.d/k3d
-      changed_when: true
+      ansible.builtin.copy:
+        content: "{{ k3d_completion.stdout }}\n"
+        dest: /etc/bash_completion.d/k3d
+        mode: "0644"

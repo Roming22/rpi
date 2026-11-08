@@ -3,8 +3,18 @@ ansible_user: user
 ansible_python_interpreter: /usr/bin/python3
 
 k3d_version: 5.9.0
+k3d_checksums:
+  amd64: sha256:06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0
+  arm64: sha256:03cde5cf23e6e8e67de5a039ecf26e5b85aca82fba3e5d13dadf904cd218a250
+
 kubectl_version: 1.35.0
+kubectl_checksums:
+  amd64: sha256:a2e984a18a0c063279d692533031c1eff93a262afcc0afdc517375432d060989
+  arm64: sha256:58f82f9fe796c375c5c4b8439850b0f3f4d401a52434052f2df46035a8789e25
+
+docker_apt_key_checksum: sha256:1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570
 
 argocd_version: v3.6.1
+argocd_install_checksum: sha256:7be23ca7d9ca3d3074dee8332f1ca92a933b990cee7c9cf22cf3843ee8c2913e
 # Homelab LAN only — forge is reached over plain HTTP on the trusted network.
 argocd_app_of_apps_url: "http://nas.shared:30142/rarnaud/argocd-config/raw/branch/main/clusters/{{ inventory_hostname_short }}/app-of-apps.yaml"

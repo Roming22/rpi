@@ -1,6 +1,5 @@
 ---
 - name: Install docker
-  when: ansible_facts['ansible_local']['bin']['docker'] == ""
   block:
     - name: Install dependencies
       become: true
@@ -25,6 +24,7 @@
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: "0644"
+        checksum: "{{ docker_apt_key_checksum }}"
 
     - name: Add Docker repository
       become: true
