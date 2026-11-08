@@ -1,9 +1,9 @@
 ---
-- name: Wait for first boot and upgrades
-  ansible.builtin.include_tasks: wait_for_first_boot.yml
-
 - name: Pause background package updates
   ansible.builtin.include_tasks: pause_auto_updates.yml
+
+- name: Wait for first boot and upgrades
+  ansible.builtin.include_tasks: wait_for_first_boot.yml
 
 - name: Bootstrap Ansible configuration
   ansible.builtin.include_tasks: bootstrap.yml

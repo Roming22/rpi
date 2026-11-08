@@ -1,16 +1,14 @@
 ---
-- name: Prepare hosts
-  hosts: all
-  gather_facts: false
-  roles:
-    - default
-
-- name: Provision k3d
+- name: Provision k3d hosts
   hosts: k3d
   gather_facts: false
   tasks:
     - name: Provision cluster tooling and single-node stack
       block:
+        - name: Prepare host
+          ansible.builtin.include_role:
+            name: default
+
         - name: Install Docker
           ansible.builtin.include_role:
             name: docker

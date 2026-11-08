@@ -1,8 +1,8 @@
 ---
 # Wait until no process holds the dpkg/apt locks (e.g. unattended-upgrades, apt-daily).
+# apt/dpkg use POSIX lockf (F_SETLK); flock(2) does not conflict with those on Linux.
 - name: Wait for APT locks to be released
-  become: yes
-  become_user: root
+  become: true
   ansible.builtin.shell: |
     python3 - <<'PY'
     import fcntl
@@ -20,9 +20,9 @@
             continue
         fd = os.open(path, os.O_RDWR)
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            fcntl.flock(fd, fcntl.LOCK_UN)
-        except BlockingIOError:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.lockf(fd, fcntl.LOCK_UN)
+        except OSError:
             sys.exit(1)
         finally:
             os.close(fd)

@@ -1,0 +1,17 @@
+---
+# One pass: reboot if /var/run/reboot-required exists, then wait for apt locks.
+- name: Check whether a reboot is required after upgrades
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: reboot_required
+
+- name: Reboot to finish pending upgrades
+  when: reboot_required.stat.exists
+  block:
+    - name: Reboot host
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+
+    - name: Wait for APT locks after reboot
+      ansible.builtin.include_tasks: wait_for_apt.yml
