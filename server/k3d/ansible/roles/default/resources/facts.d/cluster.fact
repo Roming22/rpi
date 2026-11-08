@@ -1,20 +1,17 @@
 #!/bin/bash
 # Cluster is created as inventory_hostname (often FQDN like k3d0.iot).
-# hostname -s alone misses that; probe all aliases from hostname -A.
-SHORT="$(hostname -s)"
+# Ansible writes that name to /var/ansible/cluster_name before setup.
 NAME=""
-EXISTS="false"
-for candidate in $(hostname -A 2>/dev/null) "${SHORT}"; do
-    [[ -z "${candidate}" ]] && continue
-    if k3d cluster list "${candidate}" >/dev/null 2>&1; then
-        NAME="${candidate}"
-        EXISTS="true"
-        break
-    fi
-done
+if [[ -f /var/ansible/cluster_name ]]; then
+    NAME="$(tr -d '[:space:]' </var/ansible/cluster_name)"
+fi
 if [[ -z "${NAME}" ]]; then
-    NAME="$(hostname -A 2>/dev/null | awk '{print $1}')"
-    [[ -z "${NAME}" ]] && NAME="${SHORT}"
+    NAME="$(hostname -s)"
+fi
+
+EXISTS="false"
+if [[ -n "${NAME}" ]] && k3d cluster list "${NAME}" >/dev/null 2>&1; then
+    EXISTS="true"
 fi
 
 REGISTRY=""

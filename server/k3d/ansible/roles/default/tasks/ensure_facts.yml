@@ -1,0 +1,47 @@
+---
+# Ensure custom facts and ansible_facts are available (including tagged runs).
+- name: Ansible var dir
+  become: true
+  ansible.builtin.file:
+    path: /var/ansible
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0775"
+
+- name: Ansible var/tmp dir
+  ansible.builtin.file:
+    path: /var/ansible/tmp
+    state: directory
+    mode: "0775"
+
+- name: Record expected k3d cluster name for local facts
+  ansible.builtin.copy:
+    dest: /var/ansible/cluster_name
+    content: "{{ inventory_hostname }}\n"
+    mode: "0644"
+
+- name: Ensure custom facts directory exists on target
+  become: true
+  ansible.builtin.file:
+    path: /etc/ansible/facts.d
+    state: directory
+    mode: "0755"
+
+- name: Copy fact scripts into /etc/ansible/facts.d
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/ansible/facts.d/{{ item | basename }}"
+    mode: "0755"
+  with_fileglob:
+    - "{{ role_path }}/resources/facts.d/*.fact"
+
+- name: Gather facts
+  ansible.builtin.setup:
+    fact_path: /etc/ansible/facts.d
+
+- name: Print facts
+  ansible.builtin.debug:
+    var: ansible_facts
+    verbosity: 1

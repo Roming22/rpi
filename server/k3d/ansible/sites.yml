@@ -5,6 +5,16 @@
   tasks:
     - name: Provision cluster tooling and single-node stack
       block:
+        # Runs on every tagged invocation unless --skip-tags always.
+        # Supplies ansible_facts / ansible_local before docker|cluster|argocd.
+        - name: Ensure facts
+          ansible.builtin.include_role:
+            name: default
+            tasks_from: ensure_facts.yml
+            apply:
+              tags: [always]
+          tags: [always]
+
         - name: Prepare host
           ansible.builtin.include_role:
             name: default

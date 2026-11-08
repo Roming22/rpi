@@ -7,10 +7,10 @@
     state: present
     lock_timeout: 300
 
-- name: Deploy local registry
-  when: ansible_facts['ansible_local']['cluster']['registry'] == ""
+- name: Ensure local registry is ready
   block:
     - name: Create local registry
+      when: ansible_facts['ansible_local']['cluster']['registry'] == ""
       ansible.builtin.command: k3d registry create registry.localhost -p 5000
 
     - name: Wait for local registry to be ready
@@ -23,10 +23,22 @@
       delay: 2
       until: registry_ready.status | default(0) == 200
 
-    - name: Refresh local facts after registry create
+    - name: Refresh local facts after registry ensure
       ansible.builtin.setup:
         fact_path: /etc/ansible/facts.d
         filter: ansible_local
+  rescue:
+    - name: Delete partial k3d registry after failure
+      ansible.builtin.command: k3d registry delete registry.localhost
+      register: k3d_registry_delete
+      failed_when: false
+      changed_when: k3d_registry_delete.rc == 0
+
+    - name: Fail after cleaning up partial k3d registry
+      ansible.builtin.fail:
+        msg: >-
+          k3d registry create/ready check failed for registry.localhost;
+          partial registry was deleted so the next run can retry.
 
 - name: Ensure NAS storage directories exist
   become: true

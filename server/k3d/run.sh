@@ -13,6 +13,8 @@ Options:
   -h,--host HOST         host to deploy, can be specified multiple times
                          defaults to all hosts
   --tags TAGS            comma-separated Ansible tags to pass through
+                         (facts are always gathered unless --skip-tags always;
+                         tags: bootstrap, docker, cluster, argocd, always)
   --skip-tags TAGS       comma-separated Ansible skip-tags to pass through
   --help                 show this message
   -v,--verbose           increase shell verbose level (set -x)
