@@ -1,6 +1,6 @@
 FROM ubuntu:26.04
 ARG DEBIAN_FRONTEND=noninteractive
-COPY server/k3d/ansible/hosts.yml /tmp/hosts.yml
+COPY server/k3d/ansible/group_vars/k3d.yml /tmp/k3d.yml
 COPY tools/ansible/requirements.yml /tmp/collections-requirements.yml
 RUN apt-get update \
     && apt-get install -y ansible git locales rsync vim \
@@ -8,7 +8,8 @@ RUN apt-get update \
     && locale-gen en_US.UTF-8 \
     && update-locale LANG=en_US.UTF-8 \
     && apt-get install -y apt-transport-https ca-certificates curl gnupg \
-    && K8S_VER=$(grep kubectl_version /tmp/hosts.yml | sed -E 's/.*kubectl_version:[[:space:]]*([0-9]+\.[0-9]+).*/\1/') \    
+    && K8S_VER=$(grep kubectl_version /tmp/k3d.yml | sed -E 's/.*kubectl_version:[[:space:]]*([0-9]+\.[0-9]+).*/\1/') \
+    && test -n "${K8S_VER}" \
     && curl -fsSL "https://pkgs.k8s.io/core:/stable:/v${K8S_VER}/deb/Release.key" | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
     && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
     && echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${K8S_VER}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list \
