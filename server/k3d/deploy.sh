@@ -94,35 +94,6 @@ print_cluster_info(){
 
 
 
-print_access_info(){
-    local kubeconfig="${HOME}/.kube/config.${host}"
-    local kc=(kubectl --kubeconfig="${kubeconfig}")
-    local argocd_password="unavailable"
-    local headlamp_token="unavailable"
-    local b64
-
-    if "${kc[@]}" -n argocd get secret argocd-initial-admin-secret >/dev/null 2>&1; then
-        b64="$("${kc[@]}" -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}')"
-        argocd_password="$(printf '%s' "${b64}" | base64 -d)"
-    fi
-    if "${kc[@]}" -n kube-system get secret headlamp-admin >/dev/null 2>&1; then
-        b64="$("${kc[@]}" -n kube-system get secret headlamp-admin -o jsonpath='{.data.token}')"
-        headlamp_token="$(printf '%s' "${b64}" | base64 -d)"
-    fi
-
-    echo
-    echo "[Access]"
-    echo "ArgoCD:"
-    echo "  URL: https://argocd.${host}"
-    echo "  Username: admin"
-    echo "  Password: ${argocd_password}"
-    echo "Headlamp:"
-    echo "  URL: https://${host}"
-    echo "  Token: ${headlamp_token}"
-}
-
-
-
 install_collections(){
     if ansible-galaxy collection list 2>/dev/null | grep -qE 'ansible\.posix'; then
         return 0
@@ -159,7 +130,7 @@ main(){
         if ssh "$host" test -f .kube/config; then
             get_kubeconfig
             print_cluster_info
-            print_access_info
+            "${SCRIPT_DIR}/get_access_info.sh" "${host}"
         else
             log "No kubeconfig on ${host} yet (skipped scp)"
         fi

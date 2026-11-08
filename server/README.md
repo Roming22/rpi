@@ -11,4 +11,4 @@ Automate the deployment of a server.
     ansible_host: 192.168.x.x
   ```
 
-* Run `./tools/container/run.sh ./server/k3d/run.sh`
+* Run `./tools/container/run.sh ./server/k3d/deploy.sh`
