@@ -6,15 +6,24 @@
       ansible.builtin.get_url:
         url: https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/{{ ansible_facts['ansible_local']['arch']['package'] }}/kubectl
         dest: /var/ansible/tmp/kubectl
+        mode: "0755"
 
     - name: Install kubectl
       become: true
-      ansible.builtin.shell: |
-        rm /usr/local/bin/kubectl || true; \
-        install --group root --mode 755 --owner root /var/ansible/tmp/kubectl /usr/local/bin \
-        && rm /var/ansible/tmp/kubectl
+      ansible.builtin.copy:
+        src: /var/ansible/tmp/kubectl
+        dest: /usr/local/bin/kubectl
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Remove kubectl download
+      ansible.builtin.file:
+        path: /var/ansible/tmp/kubectl
+        state: absent
 
     - name: Bash completion for kubectl
       become: true
-      ansible.builtin.shell: |
-        kubectl completion "$(basename "${SHELL}")" > /etc/bash_completion.d/kubectl
+      ansible.builtin.shell: kubectl completion bash > /etc/bash_completion.d/kubectl
+      changed_when: true
