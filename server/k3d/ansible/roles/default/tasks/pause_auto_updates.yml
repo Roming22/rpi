@@ -37,5 +37,20 @@
     content: |
       Unattended-Upgrade::Automatic-Reboot "false";
 
+- name: Check for needrestart conf.d
+  ansible.builtin.stat:
+    path: /etc/needrestart/conf.d
+  register: needrestart_conf_d
+
+- name: Make needrestart noninteractive during provisioning
+  when: needrestart_conf_d.stat.exists
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/needrestart/conf.d/99-provisioning-auto.conf
+    mode: "0644"
+    content: |
+      # Avoid interactive prompts that can stall apt-daily-upgrade mid-play.
+      $nrconf{restart} = 'a';
+
 - name: Wait for APT locks after pausing auto-updates
   ansible.builtin.include_tasks: wait_for_apt.yml

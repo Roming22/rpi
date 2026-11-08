@@ -49,6 +49,13 @@
     path: /etc/apt/apt.conf.d/99-provisioning-no-reboot
     state: absent
 
+- name: Remove provisioning needrestart override
+  become: true
+  ansible.builtin.file:
+    path: /etc/needrestart/conf.d/99-provisioning-auto.conf
+    state: absent
+
+
 - name: Start unattended-upgrades if present
   become: true
   ansible.builtin.systemd:

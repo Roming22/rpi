@@ -1,11 +1,13 @@
 ---
 # Wait until no process holds the dpkg/apt locks (e.g. unattended-upgrades, apt-daily).
 # apt/dpkg use POSIX lockf (F_SETLK); flock(2) does not conflict with those on Linux.
+# First-boot / daily upgrades on slow disks or large pending sets often exceed 10 minutes.
 - name: Wait for APT locks to be released
   become: true
   ansible.builtin.shell: |
     python3 - <<'PY'
     import fcntl
+    import glob
     import os
     import sys
 
@@ -15,6 +17,28 @@
         "/var/lib/apt/lists/lock",
         "/var/cache/apt/archives/lock",
     )
+
+
+    def holders(path):
+        try:
+            target = os.path.realpath(path)
+        except OSError:
+            return []
+        found = []
+        for fd_path in glob.glob("/proc/[0-9]*/fd/[0-9]*"):
+            try:
+                if os.path.realpath(fd_path) != target:
+                    continue
+                pid = fd_path.split("/")[2]
+                with open(f"/proc/{pid}/cmdline", "rb") as fh:
+                    cmd = fh.read().replace(b"\0", b" ").decode(errors="replace").strip()
+                found.append(f"{pid} {cmd[:120]}")
+            except OSError:
+                continue
+        return found
+
+
+    blocked = []
     for path in locks:
         if not os.path.exists(path):
             continue
@@ -23,15 +47,24 @@
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             fcntl.lockf(fd, fcntl.LOCK_UN)
         except OSError:
-            sys.exit(1)
+            who = holders(path)
+            detail = "; ".join(who) if who else "unknown process"
+            blocked.append(f"{path} ({detail})")
         finally:
             os.close(fd)
+
+    if blocked:
+        print("APT locks still held:")
+        for line in blocked:
+            print(f"  - {line}")
+        sys.exit(1)
     sys.exit(0)
     PY
   args:
     executable: /bin/bash
   register: apt_lock_free
-  retries: 60
-  delay: 10
+  # Up to ~2h: unattended-upgrade on first boot / large pending sets is often >>10m.
+  retries: 240
+  delay: 30
   until: apt_lock_free.rc == 0
   changed_when: false
