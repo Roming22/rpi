@@ -78,8 +78,8 @@
   args:
     executable: /bin/bash
   register: apt_lock_free
-  # Up to ~2h: unattended-upgrade on first boot / large pending sets is often >>10m.
-  retries: 240
+  # Up to ~30m for in-flight unattended-upgrade after pausing timers.
+  retries: 60
   delay: 30
   until: apt_lock_free.rc == 0
   changed_when: false
