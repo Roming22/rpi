@@ -1,7 +1,6 @@
 ---
 - name: Install dependencies
-  become: yes
-  become_user: root
+  become: true
   ansible.builtin.apt:
     name:
       - curl
@@ -15,11 +14,29 @@
 
 - name: Deploy local registry
   when: ansible_facts['ansible_local']['cluster']['registry'] == ""
-  ansible.builtin.shell: |
-    k3d registry create registry.localhost -p 5000
-    while ! curl -s http://k3d-registry.localhost:5000/v2/_catalog; do
-      sleep 2
-    done
+  block:
+    - name: Create local registry
+      ansible.builtin.command: k3d registry create registry.localhost -p 5000
+
+    - name: Wait for local registry to be ready
+      ansible.builtin.uri:
+        url: http://k3d-registry.localhost:5000/v2/_catalog
+        method: GET
+        status_code: 200
+      register: registry_ready
+      retries: 30
+      delay: 2
+      until: registry_ready.status == 200
+
+- name: Ensure NAS storage directories exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /mnt/nas/{{ inventory_hostname }}/storage/persistentvolumes
+    - /mnt/nas/{{ inventory_hostname }}/storage/storageclasses/local-path
 
 - name: Deploy k3d cluster
   when: ansible_facts['ansible_local']['cluster']['exists'] != true
@@ -54,10 +71,16 @@
         replace: "https://{{ inventory_hostname }}\\1"
 
     - name: Wait for cluster nodes to be ready
-      ansible.builtin.shell: |
+      ansible.builtin.command: >
         kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
-    - name: Wait for core pods to be ready
-      ansible.builtin.shell: |
-        kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns -n kube-system --timeout=120s 2>/dev/null || true
-        kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=local-path-provisioner -n kube-system --timeout=120s 2>/dev/null || true
+    - name: Wait for core DNS pods to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns
+        -n kube-system --timeout=120s
+
+    - name: Wait for local-path-provisioner pods to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=Ready pod
+        -l app.kubernetes.io/name=local-path-provisioner
+        -n kube-system --timeout=120s

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SOURCE="$(df | grep -E " /mnt/nas$" | cut -d" " -f1)"
+SOURCE="$(findmnt -n -o SOURCE /mnt/nas 2>/dev/null || true)"
 
 echo "{
     \"source\": \"$SOURCE\"
