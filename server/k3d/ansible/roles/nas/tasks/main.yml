@@ -17,6 +17,7 @@
         name:
           - nfs-common
         state: present
+        lock_timeout: 300
 
     - name: Mount NAS
       become: yes

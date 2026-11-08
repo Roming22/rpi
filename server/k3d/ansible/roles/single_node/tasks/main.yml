@@ -6,6 +6,7 @@
     name:
       - curl
     state: present
+    lock_timeout: 300
 
 - name: Copy resources
   ansible.builtin.copy:

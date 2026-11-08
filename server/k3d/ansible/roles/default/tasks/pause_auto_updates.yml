@@ -1,0 +1,39 @@
+---
+# Keep background apt from racing Ansible. Do not stop an in-flight dpkg here;
+# wait_for_apt runs after this and drains any active upgrade first.
+- name: Disable apt timers during provisioning
+  become: yes
+  become_user: root
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+  failed_when: false
+
+- name: Disable hourly system-upgrade cron during provisioning
+  become: yes
+  become_user: root
+  ansible.builtin.shell: |
+    if [ -e /etc/cron.hourly/system-upgrade ]; then
+      mv /etc/cron.hourly/system-upgrade /etc/cron.hourly/system-upgrade.disabled-for-provisioning
+      echo moved
+    else
+      echo absent
+    fi
+  args:
+    executable: /bin/bash
+  register: hourly_upgrade_disable
+  changed_when: (hourly_upgrade_disable.stdout | default('') | trim) == "moved"
+  failed_when: false
+
+- name: Prevent unattended-upgrades from rebooting mid-play
+  become: yes
+  become_user: root
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99-provisioning-no-reboot
+    mode: "0644"
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "false";

@@ -1,29 +1,44 @@
 ---
-- name: Default configuration
+- name: Prepare hosts
   hosts: all
-  gather_facts: False
+  gather_facts: false
   roles:
     - default
-  post_tasks:
-    - name: Refresh custom facts for later plays
-      ansible.builtin.setup:
-        fact_path: /etc/ansible/facts.d
-    - name: Print all available facts
-      ansible.builtin.debug:
-        var: ansible_facts
 
-- name: k3d nodes
+- name: Provision k3d
   hosts: k3d
-  gather_facts: False
-  roles:
-    - docker
-    - k3d
-    - kubectl
+  gather_facts: false
+  tasks:
+    - name: Provision cluster tooling and single-node stack
+      block:
+        - name: Install Docker
+          ansible.builtin.include_role:
+            name: docker
 
-- name: single node clusters
-  hosts: k3d:single_nodes
-  gather_facts: False
-  roles:
-    - nas
-    - single_node
-    - argocd
+        - name: Install k3d
+          ansible.builtin.include_role:
+            name: k3d
+
+        - name: Install kubectl
+          ansible.builtin.include_role:
+            name: kubectl
+
+        - name: Mount NAS
+          ansible.builtin.include_role:
+            name: nas
+          when: "'single_nodes' in group_names"
+
+        - name: Create single-node cluster
+          ansible.builtin.include_role:
+            name: single_node
+          when: "'single_nodes' in group_names"
+
+        - name: Install Argo CD
+          ansible.builtin.include_role:
+            name: argocd
+          when: "'single_nodes' in group_names"
+      always:
+        - name: Resume background package updates
+          ansible.builtin.include_role:
+            name: default
+            tasks_from: resume_auto_updates.yml

@@ -1,0 +1,36 @@
+---
+# Undo pause_auto_updates.yml after provisioning finishes.
+- name: Re-enable apt timers after provisioning
+  become: yes
+  become_user: root
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+  failed_when: false
+
+- name: Re-enable hourly system-upgrade cron after provisioning
+  become: yes
+  become_user: root
+  ansible.builtin.shell: |
+    if [ -e /etc/cron.hourly/system-upgrade.disabled-for-provisioning ]; then
+      mv /etc/cron.hourly/system-upgrade.disabled-for-provisioning /etc/cron.hourly/system-upgrade
+      echo moved
+    else
+      echo absent
+    fi
+  args:
+    executable: /bin/bash
+  register: hourly_upgrade_enable
+  changed_when: (hourly_upgrade_enable.stdout | default('') | trim) == "moved"
+  failed_when: false
+
+- name: Remove provisioning unattended-upgrades reboot override
+  become: yes
+  become_user: root
+  ansible.builtin.file:
+    path: /etc/apt/apt.conf.d/99-provisioning-no-reboot
+    state: absent
