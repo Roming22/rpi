@@ -11,7 +11,9 @@ fi
 
 EXISTS="false"
 if [[ -n "${NAME}" ]] && k3d cluster list "${NAME}" >/dev/null 2>&1; then
-    EXISTS="true"
+    if kubectl --kubeconfig="${HOME}/.kube/config" get nodes >/dev/null 2>&1; then
+        EXISTS="true"
+    fi
 fi
 
 REGISTRY=""

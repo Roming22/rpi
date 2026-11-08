@@ -47,8 +47,17 @@
     state: directory
     mode: "0755"
   loop:
-    - /mnt/nas/{{ inventory_hostname }}/storage/persistentvolumes
-    - /mnt/nas/{{ inventory_hostname }}/storage/storageclasses/local-path
+    - /mnt/nas/storage/persistentvolumes
+    - /mnt/nas/storage/storageclasses/local-path
+
+# Mount is already per-host (.../homelab/{{ inventory_hostname }}); no extra hostname under /mnt/nas.
+- name: Remove listed-but-unusable k3d cluster
+  when: ansible_facts['ansible_local']['cluster']['exists'] != true
+  ansible.builtin.command: >
+    k3d cluster delete {{ inventory_hostname }} --yes
+  register: k3d_stale_delete
+  failed_when: false
+  changed_when: k3d_stale_delete.rc == 0
 
 - name: Deploy k3d cluster
   when: ansible_facts['ansible_local']['cluster']['exists'] != true
@@ -68,8 +77,8 @@
           --registry-use "k3d-registry.localhost:5000" \
           --servers 1 \
           --timeout 300s \
-          --volume "/mnt/nas/{{ inventory_hostname }}/storage/persistentvolumes:/mnt/nas@server:0" \
-          --volume "/mnt/nas/{{ inventory_hostname }}/storage/storageclasses/local-path:/var/lib/rancher/k3s/storage@server:0" \
+          --volume "/mnt/nas/storage/persistentvolumes:/mnt/nas@server:0" \
+          --volume "/mnt/nas/storage/storageclasses/local-path:/var/lib/rancher/k3s/storage@server:0" \
           --wait
       args:
         executable: /bin/bash
