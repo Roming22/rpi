@@ -42,8 +42,7 @@
         update_cache: true
         lock_timeout: 300
 
-- name: Enable the docker service
-  when: ansible_facts['ansible_local']['docker']['service_enabled'] == false
+- name: Ensure the docker service is started and enabled
   become: true
   ansible.builtin.service:
     name: docker

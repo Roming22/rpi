@@ -21,7 +21,7 @@
       register: registry_ready
       retries: 30
       delay: 2
-      until: registry_ready.status == 200
+      until: registry_ready.status | default(0) == 200
 
     - name: Refresh local facts after registry create
       ansible.builtin.setup:
@@ -55,14 +55,12 @@
           --port "443:443@loadbalancer" \
           --registry-use "k3d-registry.localhost:5000" \
           --servers 1 \
-          --timeout 120s \
+          --timeout 300s \
           --volume "/mnt/nas/{{ inventory_hostname }}/storage/persistentvolumes:/mnt/nas@server:0" \
           --volume "/mnt/nas/{{ inventory_hostname }}/storage/storageclasses/local-path:/var/lib/rancher/k3s/storage@server:0" \
           --wait
       args:
         executable: /bin/bash
-      register: k3d_create
-      failed_when: k3d_create.rc != 0
 
     - name: Edit kubeconfig to reference the node hostname
       ansible.builtin.replace:
@@ -74,10 +72,29 @@
       ansible.builtin.command: >
         kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
+    - name: Wait for core DNS pods to appear
+      ansible.builtin.command: >
+        kubectl get pod -n kube-system -l k8s-app=kube-dns -o name
+      register: coredns_pods
+      retries: 30
+      delay: 2
+      until: coredns_pods.stdout_lines | length > 0
+      changed_when: false
+
     - name: Wait for core DNS pods to be ready
       ansible.builtin.command: >
         kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns
         -n kube-system --timeout=120s
+
+    - name: Wait for local-path-provisioner pods to appear
+      ansible.builtin.command: >
+        kubectl get pod -n kube-system
+        -l app.kubernetes.io/name=local-path-provisioner -o name
+      register: local_path_pods
+      retries: 30
+      delay: 2
+      until: local_path_pods.stdout_lines | length > 0
+      changed_when: false
 
     - name: Wait for local-path-provisioner pods to be ready
       ansible.builtin.command: >
@@ -89,3 +106,16 @@
       ansible.builtin.setup:
         fact_path: /etc/ansible/facts.d
         filter: ansible_local
+  rescue:
+    - name: Delete partial k3d cluster after create failure
+      ansible.builtin.command: >
+        k3d cluster delete {{ inventory_hostname }} --yes
+      register: k3d_delete
+      failed_when: false
+      changed_when: k3d_delete.rc == 0
+
+    - name: Fail after cleaning up partial k3d cluster
+      ansible.builtin.fail:
+        msg: >-
+          k3d cluster create failed for {{ inventory_hostname }};
+          partial cluster was deleted so the next run can retry.
