@@ -6,6 +6,7 @@
       ansible.builtin.command: k3d registry create registry.localhost -p 5000
 
     - name: Wait for local registry to be ready
+      when: ansible_facts['ansible_local']['cluster']['registry'] == ""
       ansible.builtin.uri:
         url: http://k3d-registry.localhost:5000/v2/_catalog
         method: GET
@@ -16,6 +17,7 @@
       until: registry_ready.status | default(0) == 200
 
     - name: Refresh local facts after registry ensure
+      when: ansible_facts['ansible_local']['cluster']['registry'] == ""
       ansible.builtin.setup:
         fact_path: /etc/ansible/facts.d
         filter: ansible_local

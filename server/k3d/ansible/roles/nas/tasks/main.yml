@@ -1,5 +1,6 @@
 ---
 - name: Mount the NAS
+  when: ansible_facts['ansible_local']['nas']['source'] != nas_expected_source
   vars:
     nas_expected_source: "truenas.local:/mnt/pool-0/homelab/{{ inventory_hostname }}"
   block:
@@ -19,7 +20,6 @@
         lock_timeout: 300
 
     - name: Wait for truenas.local to resolve
-      when: ansible_facts['ansible_local']['nas']['source'] != nas_expected_source
       ansible.builtin.command: getent hosts truenas.local
       register: truenas_dns
       retries: 30

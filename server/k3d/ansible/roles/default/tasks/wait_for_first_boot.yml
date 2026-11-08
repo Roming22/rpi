@@ -1,14 +1,30 @@
 ---
 # Wait until first-boot cloud-init and pending upgrades finish (including reboot if required).
 # Prefer calling pause_auto_updates.yml before this so hourly upgrade/reboot cannot race.
-- name: Wait for system package readiness
-  block:
-    - name: Check whether cloud-init is available
-      ansible.builtin.command: which cloud-init
-      register: cloud_init_bin
-      changed_when: false
-      failed_when: false
+# Skip the heavy wait/drain path when the host is already past first boot.
+- name: Check whether reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: first_boot_reboot_required
 
+- name: Check whether cloud-init is available
+  ansible.builtin.command: which cloud-init
+  register: cloud_init_bin
+  changed_when: false
+  failed_when: false
+
+- name: Check cloud-init status without waiting
+  when: cloud_init_bin.rc == 0
+  ansible.builtin.command: cloud-init status
+  register: cloud_init_status_quick
+  changed_when: false
+  failed_when: false
+
+- name: Wait for system package readiness
+  when: >
+    first_boot_reboot_required.stat.exists
+    or (cloud_init_bin.rc == 0 and cloud_init_status_quick.rc not in [0, 2])
+  block:
     - name: Wait for cloud-init to finish
       ansible.builtin.command:
         argv:

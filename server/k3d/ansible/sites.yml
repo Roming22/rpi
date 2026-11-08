@@ -81,12 +81,3 @@
             apply:
               tags: [always]
           tags: [always]
-
-    - name: Display information
-      ansible.builtin.include_role:
-        name: argocd
-        tasks_from: display_information.yml
-        apply:
-          tags: [argocd]
-      when: "'single_nodes' in group_names"
-      tags: [argocd]

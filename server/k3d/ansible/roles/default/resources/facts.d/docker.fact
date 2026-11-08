@@ -1,7 +1,14 @@
 #!/bin/bash
+INSTALLED="false"
+if dpkg-query -W -f='${Status}' docker-ce 2>/dev/null | grep -q 'install ok installed'; then
+    INSTALLED="true"
+elif command -v docker >/dev/null 2>&1; then
+    INSTALLED="true"
+fi
 GROUP_SET="$(groups | tr " " "\n" | grep -qE "^docker$" && echo "true" || echo "false")"
 SERVICE_ENABLED="$(systemctl is-enabled docker >/dev/null && echo "true" || echo "false")"
 echo "{
+    \"installed\": $INSTALLED,
     \"group_set\": $GROUP_SET,
     \"service_enabled\": $SERVICE_ENABLED
 }"

@@ -17,7 +17,7 @@ Options:
                          tags: bootstrap, docker, cluster, argocd, always)
   --skip-tags TAGS       comma-separated Ansible skip-tags to pass through
   --help                 show this message
-  -v,--verbose           increase shell verbose level (set -x)
+  -v,--verbose           shell set -x and ansible-playbook -v
 "
     [[ -n "${ERROR}" ]] && exit 1 || exit 0
 }
@@ -28,6 +28,7 @@ parse_args(){
     HOSTS=()
     ANSIBLE_TAGS=""
     ANSIBLE_SKIP_TAGS=""
+    VERBOSE=0
     while [[ "$#" -gt "0" ]]; do
         case "$1" in
             -h|--host)
@@ -40,7 +41,7 @@ parse_args(){
                 [[ "$#" -ge 2 ]] || usage "Missing value for $1"
                 ANSIBLE_SKIP_TAGS="$2"; shift ;;
             --help) usage ;;
-            -v|--verbose) set -x ;;
+            -v|--verbose) VERBOSE=1; set -x ;;
             *) usage "Unknown option: $1" ;;
         esac
         shift
@@ -57,11 +58,11 @@ log(){
 run_ansible(){
     local args=(
         ansible-playbook
-        -v
         -i "${ANSIBLE_DIR}/hosts.yml"
         "${ANSIBLE_DIR}/sites.yml"
         --limit "$host"
     )
+    [[ "${VERBOSE}" -eq 1 ]] && args+=(-v)
     [[ -n "${ANSIBLE_TAGS}" ]] && args+=(--tags "${ANSIBLE_TAGS}")
     [[ -n "${ANSIBLE_SKIP_TAGS}" ]] && args+=(--skip-tags "${ANSIBLE_SKIP_TAGS}")
     "${args[@]}"
@@ -93,7 +94,39 @@ print_cluster_info(){
 
 
 
+print_access_info(){
+    local kubeconfig="${HOME}/.kube/config.${host}"
+    local kc=(kubectl --kubeconfig="${kubeconfig}")
+    local argocd_password="unavailable"
+    local headlamp_token="unavailable"
+    local b64
+
+    if "${kc[@]}" -n argocd get secret argocd-initial-admin-secret >/dev/null 2>&1; then
+        b64="$("${kc[@]}" -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}')"
+        argocd_password="$(printf '%s' "${b64}" | base64 -d)"
+    fi
+    if "${kc[@]}" -n kube-system get secret headlamp-admin >/dev/null 2>&1; then
+        b64="$("${kc[@]}" -n kube-system get secret headlamp-admin -o jsonpath='{.data.token}')"
+        headlamp_token="$(printf '%s' "${b64}" | base64 -d)"
+    fi
+
+    echo
+    echo "[Access]"
+    echo "ArgoCD:"
+    echo "  URL: https://argocd.${host}"
+    echo "  Username: admin"
+    echo "  Password: ${argocd_password}"
+    echo "Headlamp:"
+    echo "  URL: https://${host}"
+    echo "  Token: ${headlamp_token}"
+}
+
+
+
 install_collections(){
+    if ansible-galaxy collection list 2>/dev/null | grep -qE 'ansible\.posix'; then
+        return 0
+    fi
     log "# Installing Ansible collections"
     ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml"
 }
@@ -126,6 +159,7 @@ main(){
         if ssh "$host" test -f .kube/config; then
             get_kubeconfig
             print_cluster_info
+            print_access_info
         else
             log "No kubeconfig on ${host} yet (skipped scp)"
         fi
