@@ -1,5 +1,4 @@
 #!/bin/bash
-
 SOURCE="$(findmnt -n -o SOURCE /mnt/nas 2>/dev/null || true)"
 
 echo "{

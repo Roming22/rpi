@@ -1,5 +1,6 @@
 ---
-# Bootstrap local SSH config, Ansible dirs/facts, and base host services.
+# Bootstrap local SSH config and base host services.
+# Facts are gathered in sites.yml (always tag) before this role runs.
 - name: Add or update user in local SSH config for each host
   ansible.builtin.shell: |
     set -e
@@ -42,9 +43,6 @@
   loop: "{{ ansible_play_hosts }}"
   loop_control:
     label: "{{ item }}"
-
-- name: Setup Ansible facts
-  ansible.builtin.include_tasks: ensure_facts.yml
 
 - name: Install avahi-daemon
   when: ansible_facts['ansible_local']['avahi']['installed'] != true

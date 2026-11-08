@@ -1,12 +1,4 @@
 ---
-- name: Install dependencies
-  become: true
-  ansible.builtin.apt:
-    name:
-      - curl
-    state: present
-    lock_timeout: 300
-
 - name: Ensure local registry is ready
   block:
     - name: Create local registry

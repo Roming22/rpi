@@ -41,7 +41,7 @@
   ansible.builtin.setup:
     fact_path: /etc/ansible/facts.d
 
-- name: Print facts
+- name: Print local facts
   ansible.builtin.debug:
-    var: ansible_facts
+    var: ansible_facts.ansible_local
     verbosity: 1
