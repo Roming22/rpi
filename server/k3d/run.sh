@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 
 usage() {
     ERROR="${1:-}"
-    [[ -z "${ERROR}" ]] || echo "$ERROR"
+    [[ -z "${ERROR}" ]] || echo "$ERROR" >&2
     echo "
 Options:
   -h,--host HOST    host to deploy, can be specified multiple times
@@ -15,7 +15,7 @@ Options:
   --help            show this message
   -v,--verbose      increase verbose level
 "
-    [[ -n "${ERROR}" ]] && exit 0 || exit 1
+    [[ -n "${ERROR}" ]] && exit 1 || exit 0
 }
 
 
@@ -66,9 +66,9 @@ print_cluster_info(){
 main(){
     parse_args "$@"
     ANSIBLE_DIR="${SCRIPT_DIR}/ansible"
+    export ANSIBLE_CONFIG="${ANSIBLE_DIR}/ansible.cfg"
 
-    reset
-    HOSTS=("${HOSTS[@]:-$(ansible -i server/k3d/ansible/hosts.yml all --list-hosts 2>/dev/null | tail -n +2 | sed 's/^[[:space:]]*//')}")
+    HOSTS=("${HOSTS[@]:-$(ansible -i "${ANSIBLE_DIR}/hosts.yml" all --list-hosts 2>/dev/null | tail -n +2 | sed 's/^[[:space:]]*//')}")
     for host in "${HOSTS[@]}"; do
         log "# Running ansible on ${host}"
         run_ansible

@@ -29,10 +29,22 @@
       ansible.builtin.shell: |
         kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=120s
 
+    - name: Refresh local facts after Argo CD install
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+        filter: ansible_local
+
 - name: Deploy ArgoCD app-of-apps
   when: ansible_facts['ansible_local']['argocd']['app_of_apps'] != true
-  ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
-  changed_when: true
+  block:
+    - name: Apply ArgoCD app-of-apps
+      ansible.builtin.shell: kubectl apply -n argocd -f {{ argocd_app_of_apps_url }}
+      changed_when: true
+
+    - name: Refresh local facts after app-of-apps
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+        filter: ansible_local
 
 - name: Wait for all ArgoCD apps to be healthy
   when: ansible_facts['ansible_local']['argocd']['apps_healthy'] != true
@@ -55,7 +67,14 @@
   register: argocd_token
   changed_when: false
 
+- name: Check for Headlamp admin secret
+  ansible.builtin.command: kubectl -n kube-system get secret headlamp-admin
+  register: headlamp_secret
+  changed_when: false
+  failed_when: false
+
 - name: Get Headlamp service account token
+  when: headlamp_secret.rc == 0
   ansible.builtin.shell: |
     kubectl -n kube-system get secret headlamp-admin -o jsonpath="{.data.token}" | base64 -d
   register: headlamp_token
@@ -70,4 +89,4 @@
       - "  Password: {{ argocd_token.stdout }}"
       - "Headlamp:"
       - "  URL: https://{{ inventory_hostname }}"
-      - "  Token: {{ headlamp_token.stdout }}"
+      - "  Token: {{ headlamp_token.stdout if (headlamp_token is defined and headlamp_token.stdout is defined) else 'unavailable' }}"

@@ -1,8 +1,7 @@
 ---
 # Undo pause_auto_updates.yml after provisioning finishes.
 - name: Re-enable apt timers after provisioning
-  become: yes
-  become_user: root
+  become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
     state: started
@@ -10,15 +9,25 @@
   loop:
     - apt-daily.timer
     - apt-daily-upgrade.timer
-  failed_when: false
+  register: apt_timer_resume
+  failed_when:
+    - apt_timer_resume is failed
+    - "'Could not find the requested service' not in (apt_timer_resume.msg | default(''))"
+
+- name: Check for disabled hourly system-upgrade cron
+  ansible.builtin.stat:
+    path: /etc/cron.hourly/system-upgrade.disabled-for-provisioning
+  register: hourly_upgrade_disabled
 
 - name: Re-enable hourly system-upgrade cron after provisioning
-  become: yes
-  become_user: root
+  become: true
   ansible.builtin.shell: |
+    set -euo pipefail
     if [ -e /etc/cron.hourly/system-upgrade.disabled-for-provisioning ]; then
       mv /etc/cron.hourly/system-upgrade.disabled-for-provisioning /etc/cron.hourly/system-upgrade
       echo moved
+    elif [ -e /etc/cron.hourly/system-upgrade ]; then
+      echo already_enabled
     else
       echo absent
     fi
@@ -26,11 +35,26 @@
     executable: /bin/bash
   register: hourly_upgrade_enable
   changed_when: (hourly_upgrade_enable.stdout | default('') | trim) == "moved"
-  failed_when: false
+
+- name: Assert hourly system-upgrade cron was restored
+  when: hourly_upgrade_disabled.stat.exists
+  ansible.builtin.stat:
+    path: /etc/cron.hourly/system-upgrade
+  register: hourly_upgrade_restored
+  failed_when: not hourly_upgrade_restored.stat.exists
 
 - name: Remove provisioning unattended-upgrades reboot override
-  become: yes
-  become_user: root
+  become: true
   ansible.builtin.file:
     path: /etc/apt/apt.conf.d/99-provisioning-no-reboot
     state: absent
+
+- name: Start unattended-upgrades if present
+  become: true
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    state: started
+  register: unattended_upgrades_resume
+  failed_when:
+    - unattended_upgrades_resume is failed
+    - "'Could not find the requested service' not in (unattended_upgrades_resume.msg | default(''))"

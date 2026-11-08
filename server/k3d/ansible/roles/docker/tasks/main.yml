@@ -67,8 +67,5 @@
         groups: ["docker"]
         append: true
 
-    - name: Reboot the machine to guarantee that groups have been applied
-      become: yes
-      become_user: root
-      reboot:
-        reboot_timeout: 900
+    - name: Reset SSH connection to pick up docker group membership
+      ansible.builtin.meta: reset_connection

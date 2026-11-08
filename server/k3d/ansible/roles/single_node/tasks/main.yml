@@ -28,6 +28,11 @@
       delay: 2
       until: registry_ready.status == 200
 
+    - name: Refresh local facts after registry create
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+        filter: ansible_local
+
 - name: Ensure NAS storage directories exist
   become: true
   ansible.builtin.file:
@@ -84,3 +89,8 @@
         kubectl wait --for=condition=Ready pod
         -l app.kubernetes.io/name=local-path-provisioner
         -n kube-system --timeout=120s
+
+    - name: Refresh local facts after cluster create
+      ansible.builtin.setup:
+        fact_path: /etc/ansible/facts.d
+        filter: ansible_local
