@@ -2,14 +2,10 @@
 - name: Deploy ArgoCD
   when: ansible_facts['ansible_local']['argocd']['installed'] != true
   block:
-    - name: Copy ArgoCD manifests
-      ansible.builtin.copy:
-        src: argocd-namespace.yml
-        dest: /var/ansible/resources/k8s/argocd-namespace.yml
-        mode: "0644"
-
     - name: Create ArgoCD Namespace
-      ansible.builtin.shell: kubectl apply -f /var/ansible/resources/k8s/argocd-namespace.yml
+      ansible.builtin.command: kubectl apply -f -
+      args:
+        stdin: "{{ lookup('file', role_path + '/files/argocd-namespace.yml') }}"
       changed_when: true
 
     - name: Apply ArgoCD manifests

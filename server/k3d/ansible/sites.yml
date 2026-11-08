@@ -8,38 +8,52 @@
         - name: Prepare host
           ansible.builtin.include_role:
             name: default
+            apply:
+              tags: [bootstrap]
           tags: [bootstrap]
 
         - name: Install Docker
           ansible.builtin.include_role:
             name: docker
+            apply:
+              tags: [docker]
           tags: [docker]
 
         - name: Install k3d
           ansible.builtin.include_role:
             name: k3d
+            apply:
+              tags: [cluster]
           tags: [cluster]
 
         - name: Install kubectl
           ansible.builtin.include_role:
             name: kubectl
+            apply:
+              tags: [cluster]
           tags: [cluster]
 
         - name: Mount NAS
           ansible.builtin.include_role:
             name: nas
+            apply:
+              tags: [cluster]
           when: "'single_nodes' in group_names"
           tags: [cluster]
 
         - name: Create single-node cluster
           ansible.builtin.include_role:
             name: single_node
+            apply:
+              tags: [cluster]
           when: "'single_nodes' in group_names"
           tags: [cluster]
 
         - name: Install Argo CD
           ansible.builtin.include_role:
             name: argocd
+            apply:
+              tags: [argocd]
           when: "'single_nodes' in group_names"
           tags: [argocd]
       always:
@@ -47,4 +61,6 @@
           ansible.builtin.include_role:
             name: default
             tasks_from: resume_auto_updates.yml
+            apply:
+              tags: [always]
           tags: [always]

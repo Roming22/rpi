@@ -63,10 +63,17 @@ print_cluster_info(){
 
 
 
+install_collections(){
+    log "# Installing Ansible collections"
+    ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml"
+}
+
 main(){
     parse_args "$@"
     ANSIBLE_DIR="${SCRIPT_DIR}/ansible"
     export ANSIBLE_CONFIG="${ANSIBLE_DIR}/ansible.cfg"
+
+    install_collections
 
     HOSTS=("${HOSTS[@]:-$(ansible -i "${ANSIBLE_DIR}/hosts.yml" all --list-hosts 2>/dev/null | tail -n +2 | sed 's/^[[:space:]]*//')}")
     for host in "${HOSTS[@]}"; do
