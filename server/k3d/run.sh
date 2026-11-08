@@ -10,10 +10,12 @@ usage() {
     [[ -z "${ERROR}" ]] || echo "$ERROR" >&2
     echo "
 Options:
-  -h,--host HOST    host to deploy, can be specified multiple times
-                    defaults to all hosts
-  --help            show this message
-  -v,--verbose      increase verbose level
+  -h,--host HOST         host to deploy, can be specified multiple times
+                         defaults to all hosts
+  --tags TAGS            comma-separated Ansible tags to pass through
+  --skip-tags TAGS       comma-separated Ansible skip-tags to pass through
+  --help                 show this message
+  -v,--verbose           increase shell verbose level (set -x)
 "
     [[ -n "${ERROR}" ]] && exit 1 || exit 0
 }
@@ -22,9 +24,19 @@ Options:
 
 parse_args(){
     HOSTS=()
+    ANSIBLE_TAGS=""
+    ANSIBLE_SKIP_TAGS=""
     while [[ "$#" -gt "0" ]]; do
         case "$1" in
-            -h|--host) HOSTS+=("$2"); shift ;;
+            -h|--host)
+                [[ "$#" -ge 2 ]] || usage "Missing value for $1"
+                HOSTS+=("$2"); shift ;;
+            --tags)
+                [[ "$#" -ge 2 ]] || usage "Missing value for $1"
+                ANSIBLE_TAGS="$2"; shift ;;
+            --skip-tags)
+                [[ "$#" -ge 2 ]] || usage "Missing value for $1"
+                ANSIBLE_SKIP_TAGS="$2"; shift ;;
             --help) usage ;;
             -v|--verbose) set -x ;;
             *) usage "Unknown option: $1" ;;
@@ -41,7 +53,16 @@ log(){
 
 
 run_ansible(){
-    ansible-playbook -v -i "${ANSIBLE_DIR}/hosts.yml" "${ANSIBLE_DIR}/sites.yml" --limit "$host"
+    local args=(
+        ansible-playbook
+        -v
+        -i "${ANSIBLE_DIR}/hosts.yml"
+        "${ANSIBLE_DIR}/sites.yml"
+        --limit "$host"
+    )
+    [[ -n "${ANSIBLE_TAGS}" ]] && args+=(--tags "${ANSIBLE_TAGS}")
+    [[ -n "${ANSIBLE_SKIP_TAGS}" ]] && args+=(--skip-tags "${ANSIBLE_SKIP_TAGS}")
+    "${args[@]}"
 }
 
 
@@ -68,6 +89,13 @@ install_collections(){
     ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml"
 }
 
+list_inventory_hosts(){
+    ansible -i "${ANSIBLE_DIR}/hosts.yml" all --list-hosts \
+        | tail -n +2 \
+        | sed 's/^[[:space:]]*//' \
+        | sed '/^$/d'
+}
+
 main(){
     parse_args "$@"
     ANSIBLE_DIR="${SCRIPT_DIR}/ansible"
@@ -75,7 +103,14 @@ main(){
 
     install_collections
 
-    HOSTS=("${HOSTS[@]:-$(ansible -i "${ANSIBLE_DIR}/hosts.yml" all --list-hosts 2>/dev/null | tail -n +2 | sed 's/^[[:space:]]*//')}")
+    if [[ "${#HOSTS[@]}" -eq 0 ]]; then
+        mapfile -t HOSTS < <(list_inventory_hosts)
+    fi
+    if [[ "${#HOSTS[@]}" -eq 0 || -z "${HOSTS[0]:-}" ]]; then
+        echo "No hosts found in inventory ${ANSIBLE_DIR}/hosts.yml" >&2
+        exit 1
+    fi
+
     for host in "${HOSTS[@]}"; do
         log "# Running ansible on ${host}"
         run_ansible
@@ -91,5 +126,5 @@ main(){
 
 
 if [ "$0" = "$BASH_SOURCE" ]; then
-    main $@
+    main "$@"
 fi

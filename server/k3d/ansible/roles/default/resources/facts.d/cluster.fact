@@ -17,7 +17,10 @@ if [[ -z "${NAME}" ]]; then
     [[ -z "${NAME}" ]] && NAME="${SHORT}"
 fi
 
-REGISTRY="$(k3d registry list registry.localhost 2>/dev/null | tail -n +2 | cut -d" " -f1)"
+REGISTRY=""
+if docker inspect k3d-registry.localhost >/dev/null 2>&1; then
+    REGISTRY="k3d-registry.localhost"
+fi
 
 echo "{
     \"exists\": $EXISTS,

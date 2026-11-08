@@ -36,3 +36,15 @@
       loop: "{{ range(1, 4) | list }}"
       loop_control:
         label: "pass {{ item }}"
+
+    - name: Check whether reboot is still required after drain
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required_remaining
+
+    - name: Fail if reboot is still required
+      when: reboot_required_remaining.stat.exists
+      ansible.builtin.fail:
+        msg: >-
+          /var/run/reboot-required is still present after 3 reboot drains.
+          Reboot the host manually and re-run provisioning.
