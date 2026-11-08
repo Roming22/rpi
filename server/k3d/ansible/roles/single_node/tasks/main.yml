@@ -7,11 +7,6 @@
     state: present
     lock_timeout: 300
 
-- name: Copy resources
-  ansible.builtin.copy:
-    src: ../resources/
-    dest: /var/ansible/resources/
-
 - name: Deploy local registry
   when: ansible_facts['ansible_local']['cluster']['registry'] == ""
   block:

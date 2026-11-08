@@ -36,8 +36,9 @@
     fi
     echo "SSH_CONFIG_STATUS=$status"
   delegate_to: localhost
+  run_once: true
   register: ssh_config_result
-  changed_when: (ssh_config_result.results | default([]) | selectattr('stdout', 'defined') | map(attribute='stdout') | list | join('')) is search('SSH_CONFIG_STATUS=changed')
+  changed_when: "'SSH_CONFIG_STATUS=changed' in (ssh_config_result.stdout | default(''))"
   loop: "{{ ansible_play_hosts }}"
   loop_control:
     label: "{{ item }}"
@@ -45,68 +46,59 @@
 - name: Setup Ansible facts
   block:
     - name: Ansible var dir
-      become: yes
-      become_user: root
-      file:
+      become: true
+      ansible.builtin.file:
         path: /var/ansible
         state: directory
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
-        mode: 0775
+        mode: "0775"
 
     - name: Ansible var/tmp dir
-      file:
+      ansible.builtin.file:
         path: /var/ansible/tmp
         state: directory
-        mode: 0775
+        mode: "0775"
 
     - name: Ensure custom facts directory exists on target
-      become: yes
-      become_user: root
-      file:
+      become: true
+      ansible.builtin.file:
         path: /etc/ansible/facts.d
         state: directory
-        mode: 0755
+        mode: "0755"
 
     - name: Copy fact scripts into /etc/ansible/facts.d
-      become: yes
-      become_user: root
+      become: true
       ansible.builtin.copy:
-        src: "{{ role_path }}/resources/facts.d/{{ item }}"
-        dest: "/etc/ansible/facts.d/{{ item }}"
+        src: "{{ item }}"
+        dest: "/etc/ansible/facts.d/{{ item | basename }}"
         mode: "0755"
-      loop:
-        - arch.fact
-        - argocd.fact
-        - avahi.fact
-        - bin.fact
-        - cluster.fact
-        - docker.fact
-        - nas.fact
+      with_fileglob:
+        - "{{ role_path }}/resources/facts.d/*.fact"
 
 - name: Get Facts
   block:
     - name: Get Facts
       ansible.builtin.setup:
         fact_path: /etc/ansible/facts.d
+
     - name: Print facts
       ansible.builtin.debug:
         var: ansible_facts
+        verbosity: 1
 
 - name: Install and enable avahi-daemon
   when: ansible_facts['ansible_local']['avahi']['installed'] != true or ansible_facts['ansible_local']['avahi']['service_enabled'] != true
   block:
     - name: Install avahi-daemon
-      become: yes
-      become_user: root
+      become: true
       ansible.builtin.apt:
         name: avahi-daemon
         state: present
         lock_timeout: 300
 
     - name: Enable and start avahi-daemon
-      become: yes
-      become_user: root
+      become: true
       ansible.builtin.service:
         name: avahi-daemon
         state: started

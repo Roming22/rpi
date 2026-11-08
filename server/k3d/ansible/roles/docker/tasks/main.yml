@@ -3,9 +3,8 @@
   when: ansible_facts['ansible_local']['bin']['docker'] == ""
   block:
     - name: Install dependencies
-      become: yes
-      become_user: root
-      apt:
+      become: true
+      ansible.builtin.apt:
         name:
           - apt-transport-https
           - ca-certificates
@@ -14,33 +13,29 @@
         lock_timeout: 300
 
     - name: Ensure APT keyrings directory exists
-      become: yes
-      become_user: root
-      file:
+      become: true
+      ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
         mode: "0755"
 
     - name: Download Docker GPG key
-      become: yes
-      become_user: root
-      get_url:
+      become: true
+      ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: "0644"
 
     - name: Add Docker repository
-      become: yes
-      become_user: root
-      apt_repository:
+      become: true
+      ansible.builtin.apt_repository:
         repo: deb [arch={{ ansible_facts['ansible_local']['arch']['package'] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable
         state: present
         filename: docker
 
     - name: Install Docker
-      become: yes
-      become_user: root
-      apt:
+      become: true
+      ansible.builtin.apt:
         name:
           - docker-ce
         state: present
@@ -49,9 +44,8 @@
 
 - name: Enable the docker service
   when: ansible_facts['ansible_local']['docker']['service_enabled'] == false
-  become: yes
-  become_user: root
-  service:
+  become: true
+  ansible.builtin.service:
     name: docker
     state: started
     enabled: true
@@ -60,9 +54,8 @@
   when: ansible_facts['ansible_local']['docker']['group_set'] == false
   block:
     - name: Ensure ansible user is added to the docker group
-      become: yes
-      become_user: root
-      user:
+      become: true
+      ansible.builtin.user:
         name: "{{ ansible_user }}"
         groups: ["docker"]
         append: true
